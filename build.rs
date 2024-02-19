@@ -191,6 +191,4 @@ fn generate_bindings() {
     bindings
         .write_to_file(out_path.join("d3d12_bindings.rs"))
         .expect("Cannot write bindings");
-
-    generate_pix_bindings();
 }

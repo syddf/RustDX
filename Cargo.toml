@@ -8,11 +8,11 @@ repository = "https://github.com/syddf/RustDX"
 exclude = ["/assets", "/extern"]
 
 [package.metadata.docs.rs]
-features = ["log_ref_counting", "pix", "debug_callback"]
+features = ["log_ref_counting", "pix", "debug_callback", "devel"]
 targets = ["x86_64-pc-windows-msvc"]
 
 [features]
-default = ["eq", "hash"]
+default = ["eq", "hash", "devel", "pix"]
 log_ref_counting = []
 pix = []
 devel = ["pix"]
@@ -21,7 +21,7 @@ hash = []
 eq = []
 
 [build-dependencies]
-bindgen = "0.60"
+bindgen = "0.69.4"
 regex = "1"
 cc = "1.0"
 
