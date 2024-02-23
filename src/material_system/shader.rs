@@ -1,21 +1,23 @@
-use std::{collections::BTreeMap, fs, io::{Error, Write}};
+use std::{collections::BTreeMap, fs, io::{Error, Read, Write}};
 
 use hassle_rs::*;
 use rspirv_reflect::*;
 use log::{debug, error, trace, warn};
 use walkdir::{WalkDir, DirEntry};
 use std::fs::File;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer, de::Visitor, de::MapAccess};
+use std::fmt;
 
 const TEXTURE_REGISTER_OFFSET : usize = 0;
 const SAMPLER_REGISTER_OFFSET : usize = 20;
 const CBUFFER_REGISTER_OFFSET : usize = 40;
 const UAV_REGISTER_OFFSET : usize = 60;
-const SHADER_ROOT_DIR : &str = r"G:\Rust\RustDX\RustDX\assets\shaders\";
+const SHADER_ROOT_DIR : &str = r"assets\shaders\";
+const SHADER_OUT_ROOT_DIR : &str = r"assets\shaders\out\";
 
 pub fn compile_shader(
     name : &str,
-    source : &str, 
+    source:&str,
     entry_point : &str,
     shader_model : &str,
     is_spirv : bool
@@ -72,13 +74,13 @@ pub fn compile_shader(
 
 pub fn get_shader_reflection(
     name : &str,
-    source : &str, 
+    source:&str,
     entry_point : &str,
     shader_model : &str
 ) -> Option<Reflection>
 {
     let compile_result = compile_shader(name, source, entry_point, shader_model, true);
-    let reflection_module = 
+    let reflection_module=
     match rspirv_reflect::Reflection::new_from_spirv(compile_result.unwrap().as_ref())
     {
         Ok(refl) => Some(refl),
@@ -91,12 +93,85 @@ pub fn get_shader_reflection(
     reflection_module
 }
 
-#[derive(Serialize, Deserialize)]
+const FIELDS: &[&str] = &["descriptor_type", "binding_count", "name"];
+#[derive(Serialize)]
 struct DescriptorInfoWrapper
 {
     descriptor_type : u32,
     binding_count: usize,
     name: String,
+}
+
+struct DescriptorInfoWrapperVisitor;
+impl<'de> Visitor<'de> for DescriptorInfoWrapperVisitor {
+    type Value = DescriptorInfoWrapper;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a struct DescriptorInfoWrapper with fields descriptor_type, binding_count and name.")
+    }
+
+    // `visit_map` 用于从序列化的 Map 数据中构造 Point
+    fn visit_map<V>(self, mut map: V) -> Result<DescriptorInfoWrapper, V::Error>
+    where
+        V: MapAccess<'de>,
+    {
+        let mut descriptor_type = None;
+        let mut binding_count = None;
+        let mut name = None;
+        while let Some(key) = map.next_key()? {
+            match key {
+                "descriptor_type" => {
+                    if descriptor_type.is_some() {
+                        return Err(serde::de::Error::duplicate_field("descriptor_type"));
+                    }
+                    descriptor_type = Some(map.next_value()?);
+                }
+                "binding_count" => {
+                    if binding_count.is_some() {
+                        return Err(serde::de::Error::duplicate_field("binding_count"));
+                    }
+                    let mut real_binding = Some(map.next_value()?).ok_or_else(|| serde::de::Error::missing_field("binding_count"))?;
+                    if real_binding >= SAMPLER_REGISTER_OFFSET && real_binding < CBUFFER_REGISTER_OFFSET
+                    {
+                        real_binding = real_binding - SAMPLER_REGISTER_OFFSET;
+                    }
+                    else if real_binding >= CBUFFER_REGISTER_OFFSET && real_binding < UAV_REGISTER_OFFSET
+                    {
+                        real_binding = real_binding - CBUFFER_REGISTER_OFFSET;
+                    }
+                    else if real_binding >= UAV_REGISTER_OFFSET
+                    {
+                        real_binding = real_binding - UAV_REGISTER_OFFSET;
+                    }
+    
+                    binding_count = Some(real_binding);
+                }
+                "name" => {
+                    if name.is_some() {
+                        return Err(serde::de::Error::duplicate_field("name"));
+                    }
+                    name = Some(map.next_value()?);
+                }
+
+                _ => {
+                    return Err(serde::de::Error::unknown_field(key, FIELDS));
+                }
+            }
+        }
+        let descriptor_type = descriptor_type.ok_or_else(|| serde::de::Error::missing_field("descriptor_type"))?;
+        let binding_count = binding_count.ok_or_else(|| serde::de::Error::missing_field("binding_count"))?;
+        let name = name.ok_or_else(|| serde::de::Error::missing_field("name"))?;
+        Ok(DescriptorInfoWrapper { descriptor_type, binding_count, name })
+    }
+}
+
+impl<'a> Deserialize<'a> for DescriptorInfoWrapper
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'a>
+    {       
+        deserializer.deserialize_struct("DescriptorInfoWrapper", FIELDS, DescriptorInfoWrapperVisitor)
+    }
 }
 
 fn create_folder(input_file_path : String)
@@ -112,77 +187,120 @@ fn create_folder(input_file_path : String)
 
 type DescriptorSetMap = BTreeMap<u32, BTreeMap<u32, DescriptorInfoWrapper>>;
 type DescriptorInfoWrapperMap = BTreeMap<u32, DescriptorInfoWrapper>;
-fn cache_compiled_result_to_file(
-    entry: &DirEntry, 
-    compiled_code: Result<Vec<u8>, String>, 
-    reflection: Option<Reflection>)
+
+#[derive(Default)]
+pub struct ShaderManager
 {
-    let code_file_path = entry.path().to_str().unwrap().replace(".hlsl", ".binaray").replace("assets\\shaders\\", "assets\\shaders\\out\\");
-    let code_file_folder = code_file_path.clone() + "\\..";
-    create_folder(code_file_folder);
-    let mut code_file = std::fs::File::create(code_file_path).expect("create file failed.");
-    code_file.write_all(&compiled_code.unwrap()).expect("write shader code file failed.");
-
-    let mut descriptor_map = DescriptorSetMap::new();
-    for (key, value) in &reflection.unwrap().get_descriptor_sets().unwrap()
-    {
-        let mut descriptor_map_in_space = DescriptorInfoWrapperMap::new();
-
-        for (binding, descriptor_info) in value
-        {
-            let binding_count_val = match descriptor_info.binding_count
-            {
-                BindingCount::Unbounded => 0,
-                BindingCount::One => 1,
-                BindingCount::StaticSized(size) => size
-            };
-            let new_wrapper = DescriptorInfoWrapper
-            {
-                descriptor_type : descriptor_info.ty.0,
-                binding_count : binding_count_val,
-                name : descriptor_info.name.clone()
-            };
-            descriptor_map_in_space.insert(*binding, new_wrapper);
-        }
-
-        descriptor_map.insert(*key, descriptor_map_in_space);
-    }
-    let descriptor_str = serde_json::to_string(&descriptor_map);
-    let reflection_file_path = entry.path().to_str().unwrap().replace(".hlsl", ".reflect").replace("assets\\shaders\\", "assets\\shaders\\out\\");
-    let reflection_file_folder = reflection_file_path.clone() + "\\..";
-    create_folder(reflection_file_folder);
-    let mut reflection_file = std::fs::File::create(reflection_file_path).expect("create file failed.");
-    reflection_file.write(&mut format!("{}", descriptor_str.unwrap()).as_bytes()).expect("write reflection failed.");
+    shader_code_map: BTreeMap<String, Vec<u8>>,
+    shader_reflection_descriptor_map: BTreeMap<String, DescriptorSetMap>
 }
 
-fn update_hlsl_shader_file(entry: &DirEntry)
+impl ShaderManager
 {
-    if entry.file_name().to_str().unwrap().ends_with("VS.hlsl") || entry.file_name().to_str().unwrap().ends_with("PS.hlsl")
+    fn load_shader_out(&mut self, entry: &DirEntry)
     {
         let path_name = entry.path().to_str().unwrap();
-        let data = fs::read_to_string(path_name).expect("Can't Open File.");
-        let psEntryPoint = "PSMain";
-        let vsEntryPoint: &str = "VSMain";
-
-        if entry.file_name().to_str().unwrap().ends_with("VS.hlsl")
+        let file_name = entry.file_name().to_str().unwrap();
+        if file_name.ends_with(".binaray")
         {
-            let compiled_code = compile_shader(path_name, &data, vsEntryPoint, "vs_6_0", false);
-            let shader_reflection = get_shader_reflection(path_name, &data, vsEntryPoint, "vs_6_0");
-            cache_compiled_result_to_file(entry, compiled_code, shader_reflection);
+            let data = fs::read(path_name).expect("open file failed.");
+            self.shader_code_map.insert(file_name.replace(".binaray", ""), data);
         }
-        else if entry.file_name().to_str().unwrap().ends_with("PS.hlsl")
+        else if file_name.ends_with(".reflect")
         {
-            let compiled_code = compile_shader(path_name, &data, psEntryPoint, "ps_6_0", false);
-            let shader_reflection = get_shader_reflection(path_name, &data, psEntryPoint, "ps_6_0");
-            cache_compiled_result_to_file(entry, compiled_code, shader_reflection);
+            let data = fs::read(path_name).expect("open file failed.");
+            if let Ok(content)=String::from_utf8(data)
+            {
+                let descriptor_set_map = serde_json::from_str::<DescriptorSetMap>(&content).unwrap();
+                self.shader_reflection_descriptor_map
+                    .insert(
+                        file_name.replace(".binaray", ""),
+                        descriptor_set_map);
+            }
         }
     }
-}
 
-pub fn update_all_shader()
-{
-    WalkDir::new(SHADER_ROOT_DIR)
-        .into_iter()
-        .filter_map(|v| v.ok())
-        .for_each(|x| update_hlsl_shader_file(&x));
+    fn cache_compiled_result_to_file(
+        &self,
+        entry:&DirEntry,
+        compiled_code:Result<Vec<u8>,String>,
+        reflection: Option<Reflection>)
+    {
+        let code_file_path = entry.path().to_str().unwrap().replace(".hlsl", ".binaray").replace("assets\\shaders\\", "assets\\shaders\\out\\");
+        let code_file_folder = code_file_path.clone() + "\\..";
+        create_folder(code_file_folder);
+        let mut code_file = std::fs::File::create(code_file_path).expect("create file failed.");
+        code_file.write_all(&compiled_code.unwrap()).expect("write shader code file failed.");
+        let mut descriptor_map = DescriptorSetMap::new();
+        for (key, value) in &reflection.unwrap().get_descriptor_sets().unwrap()
+        {
+            let mut descriptor_map_in_space = DescriptorInfoWrapperMap::new();
+   
+            for (binding, descriptor_info) in value
+            {
+                let mut real_binding = *binding as usize;
+                let binding_count_val = match descriptor_info.binding_count
+                {
+                    BindingCount::Unbounded => 0,
+                    BindingCount::One => 1,
+                    BindingCount::StaticSized(size) => size
+                };
+                let new_wrapper = DescriptorInfoWrapper
+                {
+                    descriptor_type : descriptor_info.ty.0,
+                    binding_count : binding_count_val,
+                    name : descriptor_info.name.clone()
+                };
+                descriptor_map_in_space.insert(real_binding as u32, new_wrapper);
+            }
+   
+            descriptor_map.insert(*key, descriptor_map_in_space);
+        }
+        let descriptor_str = serde_json::to_string(&descriptor_map);
+        let reflection_file_path = entry.path().to_str().unwrap().replace(".hlsl", ".reflect").replace("assets\\shaders\\", "assets\\shaders\\out\\");
+        let reflection_file_folder = reflection_file_path.clone() + "\\..";
+        create_folder(reflection_file_folder);
+        let mut reflection_file = std::fs::File::create(reflection_file_path).expect("create file failed.");
+        reflection_file.write(&mut format!("{}", descriptor_str.unwrap()).as_bytes()).expect("write reflection failed.");
+    }
+   
+    fn update_hlsl_shader_file(&self, entry: &DirEntry)
+    {
+        if entry.file_name().to_str().unwrap().ends_with("VS.hlsl") || entry.file_name().to_str().unwrap().ends_with("PS.hlsl")
+        {
+            let path_name = entry.path().to_str().unwrap();
+            let data = fs::read_to_string(path_name).expect("Can't Open File.");
+            let ps_entry_point = "PSMain";
+            let vs_entry_point: &str = "VSMain";
+
+            if entry.file_name().to_str().unwrap().ends_with("VS.hlsl")
+            {
+                let compiled_code = compile_shader(path_name, &data, vs_entry_point, "vs_6_0", false);
+                let shader_reflection = get_shader_reflection(path_name, &data, vs_entry_point, "vs_6_0");
+                self.cache_compiled_result_to_file(entry, compiled_code, shader_reflection);
+            }
+            else if entry.file_name().to_str().unwrap().ends_with("PS.hlsl")
+            {
+                let compiled_code = compile_shader(path_name, &data, ps_entry_point, "ps_6_0", false);
+                let shader_reflection = get_shader_reflection(path_name, &data, ps_entry_point, "ps_6_0");
+                self.cache_compiled_result_to_file(entry, compiled_code, shader_reflection);
+            }
+        }
+    }
+
+    pub fn update_all_shader(&self)
+    {
+        WalkDir::new(SHADER_ROOT_DIR)
+            .into_iter()
+            .filter_map(|v| v.ok())
+            .for_each(|x| self.update_hlsl_shader_file(&x));
+    }
+   
+    pub fn load_all_shader(&mut self)
+    {
+        WalkDir::new(SHADER_OUT_ROOT_DIR)
+            .into_iter()
+            .filter_map(|v| v.ok())
+            .for_each(|x| self.load_shader_out(&x))
+    }
 }
