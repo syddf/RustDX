@@ -3,6 +3,7 @@
 #![allow(non_snake_case)]
 
 use crate::raw_bindings::d3d12::*;
+use winapi::shared::winerror;
 
 macro_rules! dx_call {
     ($object_ptr:expr, $method_name:ident, $($args:expr),*) => {{
@@ -107,13 +108,13 @@ pub type DxResult<T> = Result<T, DxError>;
 
 macro_rules! success {
     ($ret_code:expr) => {
-        $ret_code >= winerror::S_OK
+        $ret_code >= winapi::shared::winerror::S_OK
     };
 }
 
 macro_rules! fail {
     ($ret_code:expr) => {
-        $ret_code < winerror::S_OK
+        $ret_code < winapi::shared::winerror::S_OK
     };
 }
 
@@ -271,3 +272,131 @@ macro_rules! impl_com_object_set_get_name {
     };
 }
 
+
+// ToDo: get rid of it in favor of usize??
+/// A newtype around [u64] made to distinguish between element counts and byte sizes in APIs
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ByteCount(pub u64);
+
+// ByteCount + ByteCount = ByteCount
+impl std::ops::Add<ByteCount> for ByteCount {
+    type Output = Self;
+
+    fn add(self, rhs: ByteCount) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl std::ops::AddAssign<ByteCount> for ByteCount {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = Self(self.0 + rhs.0);
+    }
+}
+
+macro_rules! impl_from {
+    ($struct_type:ty, $integer_type:ty) => {
+        impl From<$integer_type> for $struct_type {
+            fn from(value: $integer_type) -> Self {
+                Self(value as u64)
+            }
+        }
+    };
+}
+
+
+macro_rules! impl_mul_div {
+    ($struct_type:tt, $integer_type:ty) => {
+        impl std::ops::Mul<$integer_type> for $struct_type {
+            type Output = Self;
+
+            fn mul(self, rhs: $integer_type) -> Self {
+                Self(self.0 * rhs as u64)
+            }
+        }
+
+        impl std::ops::Mul<$struct_type> for $integer_type {
+            type Output = $struct_type;
+
+            fn mul(self, rhs: $struct_type) -> Self::Output {
+                $struct_type(self as u64 * rhs.0)
+            }
+        }
+
+        impl std::ops::Div<$integer_type> for $struct_type {
+            type Output = Self;
+
+            fn div(self, rhs: $integer_type) -> Self {
+                Self(self.0 / rhs as u64)
+            }
+        }
+
+        impl std::ops::Div<$struct_type> for $integer_type {
+            type Output = $struct_type;
+
+            fn div(self, rhs: $struct_type) -> Self::Output {
+                $struct_type(self as u64 / rhs.0)
+            }
+        }
+    };
+}
+
+impl_mul_div!(ByteCount, u8);
+impl_mul_div!(ByteCount, i8);
+impl_mul_div!(ByteCount, u16);
+impl_mul_div!(ByteCount, i16);
+impl_mul_div!(ByteCount, u32);
+impl_mul_div!(ByteCount, i32);
+impl_mul_div!(ByteCount, u64);
+impl_mul_div!(ByteCount, i64);
+impl_mul_div!(ByteCount, usize);
+impl_mul_div!(ByteCount, isize);
+
+// // Bytes * Elements = Bytes
+// impl std::ops::Mul<Elements> for Bytes {
+//     type Output = Self;
+
+//     fn mul(self, rhs: Elements) -> Self::Output {
+//         Self(self.0 * rhs.0)
+//     }
+// }
+
+impl Into<usize> for ByteCount {
+    fn into(self) -> usize {
+        self.0 as usize
+    }
+}
+
+impl_from!(ByteCount, u8);
+impl_from!(ByteCount, i8);
+impl_from!(ByteCount, u16);
+impl_from!(ByteCount, i16);
+impl_from!(ByteCount, u32);
+impl_from!(ByteCount, i32);
+impl_from!(ByteCount, u64);
+impl_from!(ByteCount, i64);
+impl_from!(ByteCount, usize);
+impl_from!(ByteCount, isize);
+
+
+
+/// Wrapper around ID3DBlob interface
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct Blob {
+    pub this: *mut ID3DBlob,
+}
+impl_com_object_refcount_unnamed!(Blob);
+impl_com_object_clone_drop!(Blob);
+
+impl Blob {
+    pub fn get_buffer(&self) -> &[u8] {
+        unsafe {
+            let buffer_pointer: *mut u8 =
+                dx_call!(self.this, GetBufferPointer,) as *mut u8;
+            let buffer_size: ByteCount =
+                ByteCount(dx_call!(self.this, GetBufferSize,));
+            std::slice::from_raw_parts(buffer_pointer, buffer_size.0 as usize)
+        }
+    }
+}
