@@ -347,3 +347,45 @@ impl DescriptorRangeOffset {
 #[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
 pub struct DescriptorRange(pub(crate) D3D12_DESCRIPTOR_RANGE1);
+
+#[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+#[repr(transparent)]
+pub struct SampleDesc(pub(crate) DXGI_SAMPLE_DESC);
+
+impl Default for SampleDesc {
+    fn default() -> Self {
+        Self(DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        })
+    }
+}
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct PipelineState {
+    pub this: *mut ID3D12PipelineState,
+}
+impl_com_object_set_get_name!(PipelineState);
+impl_com_object_refcount_named!(PipelineState);
+impl_com_object_clone_drop!(PipelineState);
+
+unsafe impl Send for PipelineState {}
+
+
+#[derive(Debug, PartialOrd, PartialEq, Clone, Copy)]
+#[repr(transparent)]
+pub struct Viewport(pub(crate) D3D12_VIEWPORT);
+
+impl Default for Viewport {
+    fn default() -> Self {
+        Viewport(D3D12_VIEWPORT {
+            TopLeftX: 0.,
+            TopLeftY: 0.,
+            Width: 0.,
+            Height: 0.,
+            MinDepth: 0.,
+            MaxDepth: 1.,
+        })
+    }
+}
