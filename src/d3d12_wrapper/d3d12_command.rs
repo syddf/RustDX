@@ -720,3 +720,49 @@ impl CommandList {
         )
     }
 }
+
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[repr(transparent)]
+pub struct CommandQueueDesc(pub(crate) D3D12_COMMAND_QUEUE_DESC);
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct CommandQueue {
+    pub this: *mut ID3D12CommandQueue,
+}
+impl_com_object_refcount_unnamed!(CommandQueue);
+impl_com_object_clone_drop!(CommandQueue);
+
+unsafe impl Send for CommandQueue {}
+
+impl CommandQueue {
+    pub fn execute_command_lists(&self, command_lists: &[CommandList]) {
+        unsafe {
+            dx_call!(
+                self.this,
+                ExecuteCommandLists,
+                command_lists.len() as std::os::raw::c_uint,
+                command_lists.as_ptr() as *const *mut ID3D12CommandList
+            );
+        }
+    }
+
+    pub fn get_timestamp_frequency(&self) -> DxResult<u64> {
+        let mut frequency = 0u64;
+        unsafe {
+            dx_try!(self.this, GetTimestampFrequency, &mut frequency);
+
+            Ok(frequency)
+        }
+    }
+
+    pub fn signal(&self, fence: &Fence, value: u64) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Signal, fence.this, value) };
+        Ok(())
+    }
+
+    pub fn wait(&self, fence: &Fence, value: u64) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Wait, fence.this, value) };
+        Ok(())
+    }
+}

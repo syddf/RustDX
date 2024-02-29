@@ -292,3 +292,55 @@ impl Default for PlacedSubresourceFootprint {
         })
     }
 }
+
+#[derive(Copy, Clone, Default, Debug)]
+#[repr(transparent)]
+pub struct ClearValue(pub(crate) D3D12_CLEAR_VALUE);
+
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[repr(transparent)]
+pub struct HeapProperties(pub(crate) D3D12_HEAP_PROPERTIES);
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug, Copy, Clone)]
+#[repr(transparent)]
+pub struct HeapDesc(pub(crate) D3D12_HEAP_DESC);
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct Heap {
+    pub this: *mut ID3D12Heap,
+}
+impl_com_object_set_get_name!(Heap);
+impl_com_object_refcount_named!(Heap);
+impl_com_object_clone_drop!(Heap);
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug, Copy, Clone)]
+#[repr(transparent)]
+pub struct ResourceAllocationInfo(pub(crate) D3D12_RESOURCE_ALLOCATION_INFO);
+
+#[derive(Copy, Clone, Default, Debug)]
+#[repr(transparent)]
+pub struct ShaderResourceViewDesc(pub(crate) D3D12_SHADER_RESOURCE_VIEW_DESC);
+
+#[repr(transparent)]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct UnorderedAccessViewDesc(pub(crate) D3D12_UNORDERED_ACCESS_VIEW_DESC);
+
+#[derive(Copy, Clone, Default, Debug)]
+#[repr(transparent)]
+pub struct DepthStencilViewDesc(pub(crate) D3D12_DEPTH_STENCIL_VIEW_DESC);
+
+#[repr(transparent)]
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
+pub struct DescriptorHeapDesc(pub(crate) D3D12_DESCRIPTOR_HEAP_DESC);
+
+impl Default for DescriptorHeapDesc {
+    fn default() -> Self {
+        Self(D3D12_DESCRIPTOR_HEAP_DESC {
+            Type: DescriptorHeapType::CbvSrvUav as i32,
+            NumDescriptors: 0,
+            Flags: DescriptorHeapFlags::None.bits(),
+            NodeMask: 0,
+        })
+    }
+}
