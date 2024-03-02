@@ -9,3 +9,4 @@ pub mod d3d12_command;
 pub mod d3d12_resource;
 pub mod d3d12_sync;
 pub mod d3d12_buffer;
+pub mod d3d12_debug;

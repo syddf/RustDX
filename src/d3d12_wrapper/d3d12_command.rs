@@ -723,7 +723,7 @@ impl CommandList {
 
 #[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
-pub struct CommandQueueDesc(pub(crate) D3D12_COMMAND_QUEUE_DESC);
+pub struct CommandQueueDesc(pub D3D12_COMMAND_QUEUE_DESC);
 
 #[derive(Debug)]
 #[repr(transparent)]

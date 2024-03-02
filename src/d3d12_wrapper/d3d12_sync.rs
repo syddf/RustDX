@@ -9,13 +9,81 @@ use crate::d3d12_resource::*;
 
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct ResourceBarrier(pub(crate) D3D12_RESOURCE_BARRIER);
+pub struct ResourceBarrier(pub D3D12_RESOURCE_BARRIER);
 
 impl ResourceBarrier {
     pub fn barrier_type(&self) -> ResourceBarrierType {
         unsafe { std::mem::transmute(self.0.Type) }
     }
+    pub fn flags(&self) -> ResourceBarrierFlags {
+        unsafe { ResourceBarrierFlags::from_bits_unchecked(self.0.Flags) }
+    }
 
+    // ToDo: rename it??
+    pub fn new_transition(desc: &ResourceTransitionBarrier) -> Self {
+        Self(D3D12_RESOURCE_BARRIER {
+            Type: ResourceBarrierType::Transition as i32,
+            Flags: ResourceBarrierFlags::None.bits(),
+            __bindgen_anon_1: D3D12_RESOURCE_BARRIER__bindgen_ty_1 {
+                Transition: desc.0,
+            },
+        })
+    }
+
+    pub fn transition(&self) -> Option<ResourceTransitionBarrier> {
+        unsafe {
+            match self.barrier_type() {
+                ResourceBarrierType::Transition => {
+                    Some(ResourceTransitionBarrier(
+                        self.0.__bindgen_anon_1.Transition,
+                    ))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_aliasing(desc: &ResourceAliasingBarrier) -> Self {
+        Self(D3D12_RESOURCE_BARRIER {
+            Type: ResourceBarrierType::Aliasing as i32,
+            Flags: ResourceBarrierFlags::None.bits(),
+            __bindgen_anon_1: D3D12_RESOURCE_BARRIER__bindgen_ty_1 {
+                Aliasing: desc.0,
+            },
+        })
+    }
+
+    pub fn aliasing(&self) -> Option<ResourceAliasingBarrier> {
+        unsafe {
+            match self.barrier_type() {
+                ResourceBarrierType::Aliasing => Some(ResourceAliasingBarrier(
+                    self.0.__bindgen_anon_1.Aliasing,
+                )),
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_uav(desc: &ResourceUavBarrier) -> Self {
+        Self(D3D12_RESOURCE_BARRIER {
+            Type: ResourceBarrierType::Uav as i32,
+            Flags: ResourceBarrierFlags::None.bits(),
+            __bindgen_anon_1: D3D12_RESOURCE_BARRIER__bindgen_ty_1 {
+                UAV: desc.0,
+            },
+        })
+    }
+
+    pub fn uav(&self) -> Option<ResourceUavBarrier> {
+        unsafe {
+            match self.barrier_type() {
+                ResourceBarrierType::Uav => {
+                    Some(ResourceUavBarrier(self.0.__bindgen_anon_1.UAV))
+                }
+                _ => None,
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -92,3 +160,18 @@ impl Win32Event {
         }
     }
 }
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug)]
+#[repr(transparent)]
+pub struct ResourceTransitionBarrier(
+    pub D3D12_RESOURCE_TRANSITION_BARRIER,
+);
+
+/// Wrapper around D3D12_RESOURCE_ALIASING_BARRIER structure
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug)]
+#[repr(transparent)]
+pub struct ResourceAliasingBarrier(pub D3D12_RESOURCE_ALIASING_BARRIER);
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug)]
+#[repr(transparent)]
+pub struct ResourceUavBarrier(pub D3D12_RESOURCE_UAV_BARRIER);

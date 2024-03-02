@@ -11,6 +11,7 @@ use std::slice;
 use std::str::Utf8Error;
 use crate::d3d12_enum::*;
 use crate::d3d12_common::*;
+use crate::d3d12_buffer::*;
 
 #[repr(transparent)]
 #[derive(Debug)]
@@ -21,6 +22,43 @@ pub struct GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il>(
     PhantomData<&'so StreamOutputDesc<'so>>,
     PhantomData<&'il InputLayoutDesc<'il>>,
 );
+
+impl<'rs, 'sh, 'so, 'il> Default
+    for GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il>
+{
+    fn default() -> Self {
+        Self(
+            D3D12_GRAPHICS_PIPELINE_STATE_DESC {
+                pRootSignature: std::ptr::null_mut(),
+                VS: ShaderBytecode::default().0,
+                PS: ShaderBytecode::default().0,
+                DS: ShaderBytecode::default().0,
+                HS: ShaderBytecode::default().0,
+                GS: ShaderBytecode::default().0,
+                StreamOutput: StreamOutputDesc::default().0,
+                BlendState: BlendDesc::default().0,
+                SampleMask: std::u32::MAX,
+                RasterizerState: RasterizerDesc::default().0,
+                DepthStencilState: DepthStencilDesc::default().0,
+                InputLayout: InputLayoutDesc::default().0,
+                IBStripCutValue: IndexBufferStripCutValue::Disabled as i32,
+                PrimitiveTopologyType: PrimitiveTopologyType::Undefined as i32,
+                NumRenderTargets: D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT as u32,
+                RTVFormats: [Format::Unknown as i32;
+                    D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT as usize],
+                DSVFormat: Format::Unknown as i32,
+                SampleDesc: SampleDesc::default().0,
+                NodeMask: 0,
+                CachedPSO: CachedPipelineState::default().0,
+                Flags: PipelineStateFlags::None.bits(),
+            },
+            PhantomData, // rs
+            PhantomData, // sh
+            PhantomData, // so
+            PhantomData, // il
+        )
+    }
+}
 
 
 #[derive(Debug)]
@@ -68,7 +106,7 @@ impl RootSignature {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 pub struct VersionedRootSignatureDesc(
-    pub(crate) D3D12_VERSIONED_ROOT_SIGNATURE_DESC,
+    pub D3D12_VERSIONED_ROOT_SIGNATURE_DESC,
 );
 /// Wrapper around D3D12_ROOT_SIGNATURE_DESC1 structure
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug)]
@@ -95,7 +133,7 @@ impl<'a, 'b> RootSignatureDesc<'a, 'b> {
 #[derive(Debug, Default)]
 #[repr(transparent)]
 pub struct RootParameter<'a>(
-    pub(crate) D3D12_ROOT_PARAMETER1,
+    pub D3D12_ROOT_PARAMETER1,
     PhantomData<&'a RootDescriptorTable<'a>>,
 );
 
@@ -186,7 +224,7 @@ pub struct RootDescriptorTable<'a>(
 #[repr(transparent)]
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Debug)]
 pub struct ShaderBytecode<'a>(
-    pub(crate) D3D12_SHADER_BYTECODE,
+    pub D3D12_SHADER_BYTECODE,
     PhantomData<&'a [u8]>,
 );
 
@@ -320,16 +358,16 @@ impl<'a> Drop for InputElementDesc<'a> {
 /// Wrapper around D3D12_ROOT_CONSTANTS structure
 #[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
-pub struct RootConstants(pub(crate) D3D12_ROOT_CONSTANTS);
+pub struct RootConstants(pub D3D12_ROOT_CONSTANTS);
 
 /// Wrapper around D3D12_ROOT_DESCRIPTOR1 structure
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Default, Debug)]
 #[repr(transparent)]
-pub struct RootDescriptor(pub(crate) D3D12_ROOT_DESCRIPTOR1);
+pub struct RootDescriptor(pub D3D12_ROOT_DESCRIPTOR1);
 
 /// Newtype around [u32] since it has a special value of [DESCRIPTOR_RANGE_OFFSET_APPEND]
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
-pub struct DescriptorRangeOffset(pub(crate) u32);
+pub struct DescriptorRangeOffset(pub u32);
 
 impl From<u32> for DescriptorRangeOffset {
     fn from(count: u32) -> Self {
@@ -346,11 +384,11 @@ impl DescriptorRangeOffset {
 /// Wrapper around D3D12_DESCRIPTOR_RANGE1 structure
 #[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
-pub struct DescriptorRange(pub(crate) D3D12_DESCRIPTOR_RANGE1);
+pub struct DescriptorRange(pub D3D12_DESCRIPTOR_RANGE1);
 
 #[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
-pub struct SampleDesc(pub(crate) DXGI_SAMPLE_DESC);
+pub struct SampleDesc(pub DXGI_SAMPLE_DESC);
 
 impl Default for SampleDesc {
     fn default() -> Self {
@@ -375,7 +413,7 @@ unsafe impl Send for PipelineState {}
 
 #[derive(Debug, PartialOrd, PartialEq, Clone, Copy)]
 #[repr(transparent)]
-pub struct Viewport(pub(crate) D3D12_VIEWPORT);
+pub struct Viewport(pub D3D12_VIEWPORT);
 
 impl Default for Viewport {
     fn default() -> Self {
@@ -387,5 +425,167 @@ impl Default for Viewport {
             MinDepth: 0.,
             MaxDepth: 1.,
         })
+    }
+}
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(transparent)]
+pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
+
+// defaults from d3dx12.h
+impl Default for RenderTargetBlendDesc {
+    fn default() -> Self {
+        Self(D3D12_RENDER_TARGET_BLEND_DESC {
+            BlendEnable: 0,
+            LogicOpEnable: 0,
+            SrcBlend: Blend::One as i32,
+            DestBlend: Blend::Zero as i32,
+            BlendOp: BlendOp::Add as i32,
+            SrcBlendAlpha: Blend::One as i32,
+            DestBlendAlpha: Blend::Zero as i32,
+            BlendOpAlpha: BlendOp::Add as i32,
+            LogicOp: LogicOp::NoOp as i32,
+            RenderTargetWriteMask:
+                D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_ALL as u8,
+        })
+    }
+}
+
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(transparent)]
+pub struct BlendDesc(pub D3D12_BLEND_DESC);
+
+// defaults from d3dx12.h
+impl Default for BlendDesc {
+    fn default() -> Self {
+        Self(D3D12_BLEND_DESC {
+            AlphaToCoverageEnable: 0,
+            IndependentBlendEnable: 0,
+            RenderTarget: [RenderTargetBlendDesc::default().0; 8usize],
+        })
+    }
+}
+
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug)]
+pub struct RasterizerDesc(pub D3D12_RASTERIZER_DESC);
+
+// defaults from d3dx12.h
+impl Default for RasterizerDesc {
+    fn default() -> Self {
+        Self(D3D12_RASTERIZER_DESC {
+            FillMode: FillMode::Solid as i32,
+            CullMode: CullMode::Back as i32,
+            FrontCounterClockwise: 0,
+            DepthBias: D3D12_DEFAULT_DEPTH_BIAS as i32,
+            DepthBiasClamp: D3D12_DEFAULT_DEPTH_BIAS_CLAMP as f32,
+            SlopeScaledDepthBias: D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS as f32,
+            DepthClipEnable: 1,
+            MultisampleEnable: 0,
+            AntialiasedLineEnable: 0,
+            ForcedSampleCount: 0,
+            ConservativeRaster: ConservativeRasterizationMode::Off as i32,
+        })
+    }
+}
+
+// Padding fields are zeroed in Default impl, so this should be okay
+#[cfg(feature = "hash")]
+impl std::hash::Hash for RasterizerDesc {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        unsafe {
+            let slice = std::slice::from_raw_parts(
+                self as *const _ as *const u8,
+                std::mem::size_of::<Self>(),
+            );
+
+            slice.hash(state);
+        }
+    }
+}
+
+#[cfg(feature = "eq")]
+impl PartialEq for RasterizerDesc {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe {
+            let self_slice = std::slice::from_raw_parts(
+                self as *const _ as *const u8,
+                std::mem::size_of::<Self>(),
+            );
+
+            let other_slice = std::slice::from_raw_parts(
+                other as *const _ as *const u8,
+                std::mem::size_of::<Self>(),
+            );
+
+            self_slice == other_slice
+        }
+    }
+}
+
+impl Eq for RasterizerDesc {}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum ConservativeRasterizationMode {
+    Off = D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
+    On = D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON,
+}
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(transparent)]
+pub struct DepthStencilDesc(pub D3D12_DEPTH_STENCIL_DESC);
+
+// defaults from d3dx12.h: less depth test with writes; no stencil
+impl Default for DepthStencilDesc {
+    fn default() -> Self {
+        Self(D3D12_DEPTH_STENCIL_DESC {
+            DepthEnable: 1,
+            DepthWriteMask: DepthWriteMask::All as i32,
+            DepthFunc: ComparisonFunc::Less as i32,
+            StencilEnable: 0,
+            StencilReadMask: D3D12_DEFAULT_STENCIL_READ_MASK as u8,
+            StencilWriteMask: D3D12_DEFAULT_STENCIL_WRITE_MASK as u8,
+            FrontFace: DepthStencilOpDesc::default().0,
+            BackFace: DepthStencilOpDesc::default().0,
+        })
+    }
+}
+
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(transparent)]
+pub struct DepthStencilOpDesc(pub D3D12_DEPTH_STENCILOP_DESC);
+
+// defaults from d3dx12.h
+impl Default for DepthStencilOpDesc {
+    fn default() -> Self {
+        Self(D3D12_DEPTH_STENCILOP_DESC {
+            StencilFailOp: StencilOp::Keep as i32,
+            StencilDepthFailOp: StencilOp::Keep as i32,
+            StencilPassOp: StencilOp::Keep as i32,
+            StencilFunc: ComparisonFunc::Always as i32,
+        })
+    }
+}
+
+#[repr(transparent)]
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Debug)]
+pub struct CachedPipelineState<'a>(
+    pub D3D12_CACHED_PIPELINE_STATE,
+    PhantomData<&'a [u8]>,
+);
+
+impl<'a> Default for CachedPipelineState<'a> {
+    fn default() -> Self {
+        Self(
+            D3D12_CACHED_PIPELINE_STATE {
+                pCachedBlob: std::ptr::null_mut(),
+                CachedBlobSizeInBytes: 0,
+            },
+            PhantomData,
+        )
     }
 }

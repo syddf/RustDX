@@ -662,3 +662,176 @@ bitflags! {
         const ShaderVisible = D3D12_DESCRIPTOR_HEAP_FLAGS_D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     }
 }
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum MessageSeverity {
+    Corruption = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_CORRUPTION,
+    Error = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_ERROR,
+    Warning = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_WARNING,
+    Info = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_INFO,
+    Message = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_MESSAGE,
+}
+
+bitflags! {
+    pub struct CreateFactoryFlags: u32 {
+        const None = 0; // ToDo: Is there any constant for it?
+        const Debug = DXGI_CREATE_FACTORY_DEBUG;
+    }
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum GpuPreference {
+    Unspecified = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_UNSPECIFIED,
+    MinimumPower = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_MINIMUM_POWER,
+    HighPerformance = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+}
+
+bitflags! {
+    pub struct MakeWindowAssociationFlags: u32 {
+        const NoWindowChanges = DXGI_MWA_NO_WINDOW_CHANGES;
+        const NoAltEnter = DXGI_MWA_NO_ALT_ENTER;
+        const NoPrintScreen = DXGI_MWA_NO_PRINT_SCREEN;
+        const Valid = DXGI_MWA_VALID;
+    }
+}
+
+bitflags! {
+    pub struct PresentFlags: u32 {
+        const None = 0;
+        const Test = DXGI_PRESENT_TEST;
+        const DoNotSequence = DXGI_PRESENT_DO_NOT_SEQUENCE;
+        const Restart = DXGI_PRESENT_RESTART;
+        const DoNotWait = DXGI_PRESENT_DO_NOT_WAIT;
+        const StereoPreferRight = DXGI_PRESENT_STEREO_PREFER_RIGHT;
+        const StereoTemporaryMono = DXGI_PRESENT_STEREO_TEMPORARY_MONO;
+        const RestrictToOutput = DXGI_PRESENT_RESTRICT_TO_OUTPUT;
+        const UseDuration = DXGI_PRESENT_USE_DURATION;
+        const AllowTearing = DXGI_PRESENT_ALLOW_TEARING;
+    }
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum HeapType {
+    Default = D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_DEFAULT,
+    Upload = D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_UPLOAD,
+    Readback = D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_READBACK,
+    Custom = D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_CUSTOM,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum Blend {
+    Zero = D3D12_BLEND_D3D12_BLEND_ZERO,
+    One = D3D12_BLEND_D3D12_BLEND_ONE,
+    Color = D3D12_BLEND_D3D12_BLEND_SRC_COLOR,
+    InvSrcColor = D3D12_BLEND_D3D12_BLEND_INV_SRC_COLOR,
+    SrcAlpha = D3D12_BLEND_D3D12_BLEND_SRC_ALPHA,
+    InvSrcAlpha = D3D12_BLEND_D3D12_BLEND_INV_SRC_ALPHA,
+    DestAlpha = D3D12_BLEND_D3D12_BLEND_DEST_ALPHA,
+    InvDestAlpha = D3D12_BLEND_D3D12_BLEND_INV_DEST_ALPHA,
+    BlendDestColor = D3D12_BLEND_D3D12_BLEND_DEST_COLOR,
+    BlendInvDestColor = D3D12_BLEND_D3D12_BLEND_INV_DEST_COLOR,
+    SrvAlphaSat = D3D12_BLEND_D3D12_BLEND_SRC_ALPHA_SAT,
+    BlendFactor = D3D12_BLEND_D3D12_BLEND_BLEND_FACTOR,
+    InvBlendFactor = D3D12_BLEND_D3D12_BLEND_INV_BLEND_FACTOR,
+    Src1Color = D3D12_BLEND_D3D12_BLEND_SRC1_COLOR,
+    InvSrc1Color = D3D12_BLEND_D3D12_BLEND_INV_SRC1_COLOR,
+    Src1Alpha = D3D12_BLEND_D3D12_BLEND_SRC1_ALPHA,
+    InvSrc1Alpha = D3D12_BLEND_D3D12_BLEND_INV_SRC1_ALPHA,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum FillMode {
+    Wireframe = D3D12_FILL_MODE_D3D12_FILL_MODE_WIREFRAME,
+    Solid = D3D12_FILL_MODE_D3D12_FILL_MODE_SOLID,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum CullMode {
+    None = D3D12_CULL_MODE_D3D12_CULL_MODE_NONE,
+    Front = D3D12_CULL_MODE_D3D12_CULL_MODE_FRONT,
+    Back = D3D12_CULL_MODE_D3D12_CULL_MODE_BACK,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum BlendOp {
+    Add = D3D12_BLEND_OP_D3D12_BLEND_OP_ADD,
+    Subtract = D3D12_BLEND_OP_D3D12_BLEND_OP_SUBTRACT,
+    RevSubtract = D3D12_BLEND_OP_D3D12_BLEND_OP_REV_SUBTRACT,
+    Min = D3D12_BLEND_OP_D3D12_BLEND_OP_MIN,
+    Max = D3D12_BLEND_OP_D3D12_BLEND_OP_MAX,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum LogicOp {
+    Clear = D3D12_LOGIC_OP_D3D12_LOGIC_OP_CLEAR,
+    Set = D3D12_LOGIC_OP_D3D12_LOGIC_OP_SET,
+    Copy = D3D12_LOGIC_OP_D3D12_LOGIC_OP_COPY,
+    CopyInverted = D3D12_LOGIC_OP_D3D12_LOGIC_OP_COPY_INVERTED,
+    NoOp = D3D12_LOGIC_OP_D3D12_LOGIC_OP_NOOP,
+    Invert = D3D12_LOGIC_OP_D3D12_LOGIC_OP_INVERT,
+    And = D3D12_LOGIC_OP_D3D12_LOGIC_OP_AND,
+    NAnd = D3D12_LOGIC_OP_D3D12_LOGIC_OP_NAND,
+    Or = D3D12_LOGIC_OP_D3D12_LOGIC_OP_OR,
+    NOr = D3D12_LOGIC_OP_D3D12_LOGIC_OP_NOR,
+    XOr = D3D12_LOGIC_OP_D3D12_LOGIC_OP_XOR,
+    Equiv = D3D12_LOGIC_OP_D3D12_LOGIC_OP_EQUIV,
+    AndReverse = D3D12_LOGIC_OP_D3D12_LOGIC_OP_AND_REVERSE,
+    AndInverted = D3D12_LOGIC_OP_D3D12_LOGIC_OP_AND_INVERTED,
+    OrReverse = D3D12_LOGIC_OP_D3D12_LOGIC_OP_OR_REVERSE,
+    OrInverted = D3D12_LOGIC_OP_D3D12_LOGIC_OP_OR_INVERTED,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum DepthWriteMask {
+    Zero = D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ZERO,
+    All = D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ALL,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
+pub enum StencilOp {
+    Keep = D3D12_STENCIL_OP_D3D12_STENCIL_OP_KEEP,
+    Zero = D3D12_STENCIL_OP_D3D12_STENCIL_OP_ZERO,
+    Replace = D3D12_STENCIL_OP_D3D12_STENCIL_OP_REPLACE,
+    IncrSat = D3D12_STENCIL_OP_D3D12_STENCIL_OP_INCR_SAT,
+    DecrSat = D3D12_STENCIL_OP_D3D12_STENCIL_OP_DECR_SAT,
+    Invert = D3D12_STENCIL_OP_D3D12_STENCIL_OP_INVERT,
+    Incr = D3D12_STENCIL_OP_D3D12_STENCIL_OP_INCR,
+    Dec = D3D12_STENCIL_OP_D3D12_STENCIL_OP_DECR,
+}
+
+bitflags! {
+    pub struct PipelineStateFlags: i32 {
+        const None = D3D12_PIPELINE_STATE_FLAGS_D3D12_PIPELINE_STATE_FLAG_NONE;
+        const ToolDebug = D3D12_PIPELINE_STATE_FLAGS_D3D12_PIPELINE_STATE_FLAG_TOOL_DEBUG;
+    }
+}

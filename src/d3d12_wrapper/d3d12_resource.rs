@@ -108,11 +108,11 @@ pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 
 #[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
-pub struct Range(pub(crate) D3D12_RANGE);
+pub struct Range(pub D3D12_RANGE);
 
 #[repr(transparent)]
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
-pub struct ResourceDesc(pub(crate) D3D12_RESOURCE_DESC);
+pub struct ResourceDesc(pub D3D12_RESOURCE_DESC);
 
 impl Default for ResourceDesc {
     fn default() -> Self {
@@ -133,7 +133,7 @@ impl Default for ResourceDesc {
 
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Debug)]
 #[repr(transparent)]
-pub struct Rect(pub(crate) D3D12_RECT);
+pub struct Rect(pub D3D12_RECT);
 
 impl Default for Rect {
     fn default() -> Self {
@@ -148,7 +148,7 @@ impl Default for Rect {
 
 #[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
-pub struct Box(pub(crate) D3D12_BOX);
+pub struct Box(pub D3D12_BOX);
 
 impl Default for Box {
     fn default() -> Self {
@@ -281,7 +281,7 @@ pub unsafe fn memcpy_subresource(
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct PlacedSubresourceFootprint(
-    pub(crate) D3D12_PLACED_SUBRESOURCE_FOOTPRINT,
+    pub D3D12_PLACED_SUBRESOURCE_FOOTPRINT,
 );
 
 impl Default for PlacedSubresourceFootprint {
@@ -295,15 +295,15 @@ impl Default for PlacedSubresourceFootprint {
 
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
-pub struct ClearValue(pub(crate) D3D12_CLEAR_VALUE);
+pub struct ClearValue(pub D3D12_CLEAR_VALUE);
 
 #[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
-pub struct HeapProperties(pub(crate) D3D12_HEAP_PROPERTIES);
+pub struct HeapProperties(pub D3D12_HEAP_PROPERTIES);
 
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug, Copy, Clone)]
 #[repr(transparent)]
-pub struct HeapDesc(pub(crate) D3D12_HEAP_DESC);
+pub struct HeapDesc(pub D3D12_HEAP_DESC);
 
 #[derive(Debug)]
 #[repr(transparent)]
@@ -316,23 +316,23 @@ impl_com_object_clone_drop!(Heap);
 
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug, Copy, Clone)]
 #[repr(transparent)]
-pub struct ResourceAllocationInfo(pub(crate) D3D12_RESOURCE_ALLOCATION_INFO);
+pub struct ResourceAllocationInfo(pub D3D12_RESOURCE_ALLOCATION_INFO);
 
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
-pub struct ShaderResourceViewDesc(pub(crate) D3D12_SHADER_RESOURCE_VIEW_DESC);
+pub struct ShaderResourceViewDesc(pub D3D12_SHADER_RESOURCE_VIEW_DESC);
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct UnorderedAccessViewDesc(pub(crate) D3D12_UNORDERED_ACCESS_VIEW_DESC);
+pub struct UnorderedAccessViewDesc(pub D3D12_UNORDERED_ACCESS_VIEW_DESC);
 
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
-pub struct DepthStencilViewDesc(pub(crate) D3D12_DEPTH_STENCIL_VIEW_DESC);
+pub struct DepthStencilViewDesc(pub D3D12_DEPTH_STENCIL_VIEW_DESC);
 
 #[repr(transparent)]
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
-pub struct DescriptorHeapDesc(pub(crate) D3D12_DESCRIPTOR_HEAP_DESC);
+pub struct DescriptorHeapDesc(pub D3D12_DESCRIPTOR_HEAP_DESC);
 
 impl Default for DescriptorHeapDesc {
     fn default() -> Self {

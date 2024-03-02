@@ -401,3 +401,17 @@ impl Blob {
     }
 }
 
+macro_rules! cast_to_iunknown {
+    ($pointer:expr) => {{
+        let mut result: *mut IUnknown = std::ptr::null_mut();
+        dx_try!(
+            $pointer,
+            QueryInterface,
+            &IID_IUnknown,
+            cast_to_ppv(&mut result)
+        );
+
+        dx_call!($pointer, Release,);
+        result
+    }};
+}

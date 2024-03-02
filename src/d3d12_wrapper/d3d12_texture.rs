@@ -11,12 +11,12 @@ use crate::d3d12_resource::*;
 /// Wrapper around D3D12_SAMPLER_DESC structure
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
-pub struct SamplerDesc(pub(crate) D3D12_SAMPLER_DESC);
+pub struct SamplerDesc(pub D3D12_SAMPLER_DESC);
 
 /// Wrapper around D3D12_STATIC_SAMPLER_DESC structure
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct StaticSamplerDesc(pub(crate) D3D12_STATIC_SAMPLER_DESC);
+pub struct StaticSamplerDesc(pub D3D12_STATIC_SAMPLER_DESC);
 
 // based on the first constructor of CD3DX12_STATIC_SAMPLER_DESC
 impl Default for StaticSamplerDesc {
@@ -61,7 +61,7 @@ pub enum TextureLayout {
 
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(transparent)]
-pub struct SubresourceFootprint(pub(crate) D3D12_SUBRESOURCE_FOOTPRINT);
+pub struct SubresourceFootprint(pub D3D12_SUBRESOURCE_FOOTPRINT);
 
 impl Default for SubresourceFootprint {
     fn default() -> Self {
@@ -77,7 +77,7 @@ impl Default for SubresourceFootprint {
 
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct TextureCopyLocation(pub(crate) D3D12_TEXTURE_COPY_LOCATION);
+pub struct TextureCopyLocation(pub D3D12_TEXTURE_COPY_LOCATION);
 
 impl TextureCopyLocation {
     pub fn new_placed_footprint(
