@@ -37,6 +37,7 @@ thiserror = "1.0"
 rspirv-reflect = "0.8.0"
 walkdir = "2.4.0"
 serde_json = "1.0.114"
+lazy_static = "1.4.0"
 
 # Needed for examples
 [dev-dependencies]

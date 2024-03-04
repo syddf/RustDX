@@ -16,7 +16,7 @@ use crate::d3d12_debug::*;
 use crate::d3d12_sync::*;
 use crate::d3d12_device::*;
 use crate::d3d12_buffer::*;
-
+use crate::shader::*;
 use std::ffi::{CStr, CString, NulError};
 
 #[no_mangle]
@@ -111,7 +111,7 @@ impl TypedBuffer for VertexBuffer {
         let mut view = VertexBufferView::default();
         view.0.BufferLocation = buffer.get_gpu_virtual_address().0;
         view.0.SizeInBytes = size.0 as u32;
-        view.0.StrideInBytes = size.0 as u32;
+        view.0.StrideInBytes = element_size.0 as u32;
 
         VertexBuffer {
             buffer: buffer,
@@ -699,6 +699,9 @@ impl Drop for HelloTriangleSample {
 }
 
 fn main() {
+    vertex_factory::VertexFactoryInitializer::Init();
+    let shader_manager = G_SHADER_MANAGER.lock().unwrap();
+    shader_manager.update_all_shader();
     let command_args = clap::App::new("Hobbiton")
         .arg(
             clap::Arg::with_name("frame_count")

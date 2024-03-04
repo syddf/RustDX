@@ -13,6 +13,7 @@ dependencies = [
  "clap",
  "colorsys",
  "hassle-rs",
+ "lazy_static",
  "log",
  "memoffset",
  "rand 0.8.5",

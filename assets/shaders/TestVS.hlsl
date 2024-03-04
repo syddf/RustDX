@@ -1,8 +1,4 @@
-struct VertexIn
-{
-    float3 pos: Position;
-    float4 color: Color;
-};
+#include "common/VertexFactory.hlsl"
 
 struct VertexOut
 {

@@ -7,6 +7,19 @@ use walkdir::{WalkDir, DirEntry};
 use std::fs::File;
 use serde::{Deserialize, Serialize, Deserializer, de::Visitor, de::MapAccess};
 use std::fmt;
+use std::path::{Path, PathBuf};
+
+fn add_prefix_to_file_name(path: &str, prefix: &str) -> Option<PathBuf> {
+    let mut path_buf = PathBuf::from(path);
+    if let Some(file_name) = path_buf.file_name() {
+        if let Some(file_name_str) = file_name.to_str() {
+            let new_file_name = format!("{}{}", prefix, file_name_str);
+            path_buf.set_file_name(new_file_name);
+            return Some(path_buf);
+        }
+    }
+    None
+}
 
 const TEXTURE_REGISTER_OFFSET : usize = 0;
 const SAMPLER_REGISTER_OFFSET : usize = 20;
@@ -15,12 +28,16 @@ const UAV_REGISTER_OFFSET : usize = 60;
 const SHADER_ROOT_DIR : &str = r"assets\shaders\";
 const SHADER_OUT_ROOT_DIR : &str = r"assets\shaders\out\";
 
+use lazy_static::lazy_static;
+use std::sync::Mutex;
+
 pub fn compile_shader(
     name : &str,
     source:&str,
     entry_point : &str,
     shader_model : &str,
-    is_spirv : bool
+    is_spirv : bool,
+    in_macros: &Vec<&str>
 ) -> Result<Vec<u8>, String>
 {
     let texture_register_offset_str = TEXTURE_REGISTER_OFFSET.to_string();
@@ -49,6 +66,11 @@ pub fn compile_shader(
         compile_args.push(&uav_register_offset_str);
         compile_args.push("0");
     }
+    for macro_str in in_macros
+    {
+        compile_args.push(macro_str);
+    }
+
     let result = hassle_rs::utils::compile_hlsl(
         name,
         source,
@@ -76,10 +98,11 @@ pub fn get_shader_reflection(
     name : &str,
     source:&str,
     entry_point : &str,
-    shader_model : &str
+    shader_model : &str,
+    in_macros: &Vec<&str>
 ) -> Option<Reflection>
 {
-    let compile_result = compile_shader(name, source, entry_point, shader_model, true);
+    let compile_result = compile_shader(name, source, entry_point, shader_model, true, in_macros);
     let reflection_module=
     match rspirv_reflect::Reflection::new_from_spirv(compile_result.unwrap().as_ref())
     {
@@ -189,14 +212,28 @@ type DescriptorSetMap = BTreeMap<u32, BTreeMap<u32, DescriptorInfoWrapper>>;
 type DescriptorInfoWrapperMap = BTreeMap<u32, DescriptorInfoWrapper>;
 
 #[derive(Default)]
+pub struct VertexFactoryInfo
+{
+    name : &'static str,
+    macros : Vec<&'static str>
+}
+
+#[derive(Default)]
 pub struct ShaderManager
 {
     shader_code_map: BTreeMap<String, Vec<u8>>,
-    shader_reflection_descriptor_map: BTreeMap<String, DescriptorSetMap>
+    shader_reflection_descriptor_map: BTreeMap<String, DescriptorSetMap>,
+    vertex_factory_infos: Vec<VertexFactoryInfo>
 }
 
 impl ShaderManager
 {
+    pub fn add_vertex_factory(&mut self, name: &'static str, macros: Vec<&'static str>)
+    {
+        let new_vertex_factory = VertexFactoryInfo{name: name, macros: macros};
+        self.vertex_factory_infos.push(new_vertex_factory);
+    }
+
     fn load_shader_out(&mut self, entry: &DirEntry)
     {
         let path_name = entry.path().to_str().unwrap();
@@ -224,9 +261,12 @@ impl ShaderManager
         &self,
         entry:&DirEntry,
         compiled_code:Result<Vec<u8>,String>,
-        reflection: Option<Reflection>)
+        reflection: Option<Reflection>,
+        file_prefix:&str)
     {
-        let code_file_path = entry.path().to_str().unwrap().replace(".hlsl", ".binaray").replace("assets\\shaders\\", "assets\\shaders\\out\\");
+        let real_new_path = add_prefix_to_file_name(entry.path().to_str().unwrap(), file_prefix).unwrap();
+        
+        let code_file_path = real_new_path.to_str().unwrap().replace(".hlsl", ".binaray").replace("assets\\shaders\\", "assets\\shaders\\out\\");
         let code_file_folder = code_file_path.clone() + "\\..";
         create_folder(code_file_folder);
         let mut code_file = std::fs::File::create(code_file_path).expect("create file failed.");
@@ -257,7 +297,7 @@ impl ShaderManager
             descriptor_map.insert(*key, descriptor_map_in_space);
         }
         let descriptor_str = serde_json::to_string(&descriptor_map);
-        let reflection_file_path = entry.path().to_str().unwrap().replace(".hlsl", ".reflect").replace("assets\\shaders\\", "assets\\shaders\\out\\");
+        let reflection_file_path = real_new_path.to_str().unwrap().replace(".hlsl", ".reflect").replace("assets\\shaders\\", "assets\\shaders\\out\\");
         let reflection_file_folder = reflection_file_path.clone() + "\\..";
         create_folder(reflection_file_folder);
         let mut reflection_file = std::fs::File::create(reflection_file_path).expect("create file failed.");
@@ -272,18 +312,26 @@ impl ShaderManager
             let data = fs::read_to_string(path_name).expect("Can't Open File.");
             let ps_entry_point = "PSMain";
             let vs_entry_point: &str = "VSMain";
-
+            let mut macros = vec![];
             if entry.file_name().to_str().unwrap().ends_with("VS.hlsl")
             {
-                let compiled_code = compile_shader(path_name, &data, vs_entry_point, "vs_6_0", false);
-                let shader_reflection = get_shader_reflection(path_name, &data, vs_entry_point, "vs_6_0");
-                self.cache_compiled_result_to_file(entry, compiled_code, shader_reflection);
+                for vf_entry in &self.vertex_factory_infos
+                {
+                    for open_define in &vf_entry.macros
+                    {
+                        macros.push("-D");
+                        macros.push(open_define);
+                    }
+                    let compiled_code = compile_shader(path_name, &data, vs_entry_point, "vs_6_0", false, &macros);
+                    let shader_reflection = get_shader_reflection(path_name, &data, vs_entry_point, "vs_6_0", &macros);
+                    self.cache_compiled_result_to_file(entry, compiled_code, shader_reflection, vf_entry.name);    
+                }
             }
             else if entry.file_name().to_str().unwrap().ends_with("PS.hlsl")
             {
-                let compiled_code = compile_shader(path_name, &data, ps_entry_point, "ps_6_0", false);
-                let shader_reflection = get_shader_reflection(path_name, &data, ps_entry_point, "ps_6_0");
-                self.cache_compiled_result_to_file(entry, compiled_code, shader_reflection);
+                let compiled_code = compile_shader(path_name, &data, ps_entry_point, "ps_6_0", false, &macros);
+                let shader_reflection = get_shader_reflection(path_name, &data, ps_entry_point, "ps_6_0", &macros);
+                self.cache_compiled_result_to_file(entry, compiled_code, shader_reflection, "");
             }
         }
     }
@@ -303,4 +351,9 @@ impl ShaderManager
             .filter_map(|v| v.ok())
             .for_each(|x| self.load_shader_out(&x))
     }
+}
+
+lazy_static! 
+{
+    pub static ref G_SHADER_MANAGER: Mutex<ShaderManager> = Mutex::new(ShaderManager::default());
 }
