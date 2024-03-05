@@ -263,6 +263,15 @@ impl HelloTriangleSample {
 
         renderer.create_render_target_views();
 
+        let mut triangle = static_mesh::StaticMesh::new("triangle");
+        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![-1., -1., 0.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![0., 1., 0.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![1., -1., 0.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![1., 0., 0., 1.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![0., 1., 0., 1.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![1., 0., 1., 1.]);
+        triangle.set_index_buffer(vec![0, 1, 2]);
+
         let vertex_data = vec![
             Vertex {
                 position: [-1., -1., 0.],

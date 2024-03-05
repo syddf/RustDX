@@ -8,3 +8,6 @@ pub use material_system::*;
 
 mod d3d12_wrapper;
 pub use d3d12_wrapper::*;
+
+mod scene;
+pub use scene::*;
