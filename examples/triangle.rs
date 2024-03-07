@@ -16,6 +16,7 @@ use crate::d3d12_debug::*;
 use crate::d3d12_sync::*;
 use crate::d3d12_device::*;
 use crate::d3d12_buffer::*;
+use crate::d3d12_window::*;
 use crate::shader::*;
 use std::ffi::{CStr, CString, NulError};
 
@@ -51,10 +52,6 @@ impl Drop for ScopedDebugMessagePrinter {
             .expect("Cannot print info queue messages");
     }
 }
-
-const WINDOW_WIDTH: u32 = 640;
-const WINDOW_HEIGHT: u32 = 480;
-const FRAMES_IN_FLIGHT: u32 = 3;
 
 #[repr(C)]
 struct Vertex {
@@ -152,7 +149,7 @@ impl TypedBuffer for IndexBuffer {
     }
 }
 
-struct HelloTriangleSample {
+struct HelloTriangleSample<> {
     root_signature: Option<RootSignature>,
     pipeline_state: Option<PipelineState>,
     index_buffers: Vec<IndexBuffer>,
@@ -161,36 +158,22 @@ struct HelloTriangleSample {
     current_fence_value: u64,
     rtv_descriptor_size: ByteCount,
     rtv_heap: DescriptorHeap,
-    swapchain: Swapchain,
     command_list: CommandList,
     command_allocator: CommandAllocator,
-    command_queue: CommandQueue,
     fence: Fence,
     info_queue: Rc<InfoQueue>,
-    device: Device,
-    adapter: Adapter,
-    factory: Factory,
-    debug_layer: Debug,
 }
 
-impl HelloTriangleSample {
+impl HelloTriangleSample<> {
     pub fn new(hwnd: *mut std::ffi::c_void) -> Result<Self, HRESULT> {
-        let debug_layer = Debug::new().expect("Cannot create debug layer");
-        debug_layer.enable_debug_layer();
-        debug_layer.enable_gpu_based_validation();
-        debug_layer.enable_object_auto_name();
+        d3d12_window::InitD3D12Device(hwnd);
 
-        let mut factory = Factory::new(CreateFactoryFlags::Debug)
-            .expect("Cannot create factory");
-        let adapter = Self::choose_adapter(&mut factory);
-
-        let device = Device::new(&adapter).expect("Cannot create device");
-
+        let device = d3d12_window::G_D3D12_DEVICE.lock().unwrap();
         let info_queue = Rc::new(
             InfoQueue::new(&device, None)
                 .expect("Cannot create debug info queue"),
         );
-
+    
         let _debug_printer =
             ScopedDebugMessagePrinter::new(Rc::clone(&info_queue));
 
@@ -201,14 +184,10 @@ impl HelloTriangleSample {
         let rtv_descriptor_size = device
             .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
 
-        let command_queue = device
-            .create_command_queue(&CommandQueueDesc::default())
-            .expect("Cannot create command queue");
-
         let command_allocator = device
             .create_command_allocator(CommandListType::Direct)
             .expect("Cannot create command allocator");
-
+    
         let command_list = device
             .create_command_list(
                 CommandListType::Direct,
@@ -217,19 +196,8 @@ impl HelloTriangleSample {
             )
             .expect("Cannot create command list");
         command_list.close().expect("Cannot close command list");
-
-        let mut swapchain_desc = SwapChainDesc::default();
-        swapchain_desc.0.Width = WINDOW_WIDTH;
-        swapchain_desc.0.Height = WINDOW_HEIGHT;
-        swapchain_desc.0.BufferCount = FRAMES_IN_FLIGHT;
-
-        println!("swapchain_desc: {:?}", &swapchain_desc);
-
-        let swapchain = unsafe {
-            factory
-                .create_swapchain(&command_queue, hwnd as HWND, &swapchain_desc)
-                .expect("Cannot create swapchain")
-        };
+    
+    
 
         let mut rtv_heap_desc = DescriptorHeapDesc::default();
         rtv_heap_desc.0.Type = DescriptorHeapType::Rtv as i32;
@@ -247,21 +215,15 @@ impl HelloTriangleSample {
             vertex_buffers: vec![],
             current_frame: 0,
             current_fence_value: 0,
-            debug_layer: debug_layer,
-            factory: factory,
-            adapter: adapter,
-            device: device,
             info_queue: info_queue,
             fence: fence,
             rtv_descriptor_size,
-            command_queue: command_queue,
             command_allocator: command_allocator,
             command_list: command_list,
-            swapchain: swapchain,
             rtv_heap: rtv_heap,
         };
 
-        renderer.create_render_target_views();
+        renderer.create_render_target_views(&device);
 
         let mut triangle = static_mesh::StaticMesh::new("triangle");
         triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![-1., -1., 0.]);
@@ -288,14 +250,14 @@ impl HelloTriangleSample {
         ];
 
         let vertex_buffer = renderer
-            .create_default_buffer(&vertex_data, Some("vertex_buffer"))
+            .create_default_buffer(&vertex_data, Some("vertex_buffer"), &device)
             .expect("Cannot create vertex buffer");
 
         renderer.vertex_buffers.push(vertex_buffer);
 
         let index_data: Vec<u16> = vec![0, 1, 2];
         let index_buffer = renderer
-            .create_default_buffer(&index_data, Some("index_buffer"))
+            .create_default_buffer(&index_data, Some("index_buffer"), &device)
             .expect("Cannot create index buffer");
         renderer.index_buffers.push(index_buffer);
 
@@ -351,8 +313,7 @@ float4 PS(VertexOut input) : SV_Target
         .expect("Cannot compile pixel shader");
         let pixel_bytecode = ShaderBytecode::new(&raw_pixel_shader_bytecode);
 
-        let root_signature = renderer
-            .device
+        let root_signature = device
             .create_root_signature(0, &pixel_bytecode)
             .expect("Cannot create root signature");
 
@@ -379,8 +340,7 @@ float4 PS(VertexOut input) : SV_Target
         pso_desc.0.RTVFormats[0] = Format::R8G8B8A8Unorm as i32;
         pso_desc.0.DSVFormat = Format::D24UnormS8Uint as i32;
 
-        let pso = renderer
-            .device
+        let pso = device
             .create_graphics_pipeline_state(&pso_desc)
             .expect("Cannot create PSO");
 
@@ -402,10 +362,10 @@ float4 PS(VertexOut input) : SV_Target
             .reset(&self.command_allocator, None)
             .expect("Cannot reset command list");
 
+        let swapchain = G_SWAP_CHAIN.lock().unwrap();
         let current_buffer_index =
-            self.swapchain.get_current_back_buffer_index();
-        let current_buffer = self
-            .swapchain
+            swapchain.get_current_back_buffer_index();
+        let current_buffer = swapchain
             .get_buffer(u32::from(current_buffer_index))
             .expect("Cannot get current swapchain buffer");
 
@@ -469,14 +429,16 @@ float4 PS(VertexOut input) : SV_Target
         self.command_list
             .close()
             .expect("Cannot close command list");
-        self.command_queue
+
+        let command_queue = G_DIRECT_COMMAND_QUEUE.lock().unwrap();
+        command_queue
             .execute_command_lists(std::slice::from_ref(&self.command_list));
 
-        self.swapchain
+        swapchain
             .present(0, PresentFlags::None)
             .expect("Cannot present frame");
 
-        self.flush_command_queue();
+        self.flush_command_queue(&command_queue);
 
         self.current_frame += 1;
     }
@@ -484,7 +446,7 @@ float4 PS(VertexOut input) : SV_Target
 
 // Private methods
 
-impl HelloTriangleSample {
+impl HelloTriangleSample<> {
     fn choose_adapter(factory: &mut Factory) -> Adapter {
         let mut adapters =
             factory.enum_adapters().expect("Cannot enumerate adapters");
@@ -503,17 +465,18 @@ impl HelloTriangleSample {
         adapters.remove(0)
     }
 
-    fn create_render_target_views(&self) {
+    fn create_render_target_views(&self, device:&Device) {
+        let swapchain = G_SWAP_CHAIN.lock().unwrap();
+        
         for buffer_index in 0..(FRAMES_IN_FLIGHT as u32) {
             let rtv_handle = self
                 .rtv_heap
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(buffer_index, self.rtv_descriptor_size);
-            let buffer = self
-                .swapchain
+            let buffer = swapchain
                 .get_buffer(buffer_index)
                 .expect("Cannot obtain swapchain buffer");
-            self.device.create_render_target_view(&buffer, rtv_handle);
+            device.create_render_target_view(&buffer, rtv_handle);
         }
     }
 
@@ -562,6 +525,7 @@ impl HelloTriangleSample {
         &mut self,
         init_data: &Vec<T::ElementType>,
         debug_name: Option<&str>,
+        device:&Device
     ) -> Result<T, HRESULT> {
         let _debug_printer =
             ScopedDebugMessagePrinter::new(Rc::clone(&self.info_queue));
@@ -575,7 +539,7 @@ impl HelloTriangleSample {
         );
         let staging_buffer = self
             .create_buffer(
-                &self.device,
+                &device,
                 size,
                 HeapType::Upload,
                 ResourceStates::GenericRead,
@@ -603,7 +567,7 @@ impl HelloTriangleSample {
 
         let default_buffer = self
             .create_buffer(
-                &self.device,
+                &device,
                 size,
                 HeapType::Default,
                 ResourceStates::Common,
@@ -641,10 +605,10 @@ impl HelloTriangleSample {
         self.command_list
             .close()
             .expect("Cannot close command list");
-
-        self.command_queue
+        let command_queue = G_DIRECT_COMMAND_QUEUE.lock().unwrap();
+        command_queue
             .execute_command_lists(std::slice::from_ref(&self.command_list));
-        self.flush_command_queue();
+        self.flush_command_queue(&command_queue);
 
         Ok(T::from_resource(
             default_buffer,
@@ -653,9 +617,9 @@ impl HelloTriangleSample {
         ))
     }
 
-    fn flush_command_queue(&mut self) {
+    fn flush_command_queue(&mut self, command_queue: &CommandQueue) {
         self.current_fence_value += 1;
-        self.command_queue
+        command_queue
             .signal(&self.fence, self.current_fence_value)
             .expect("Cannot signal fence from command queue");
         if self.fence.get_completed_value() < self.current_fence_value {
@@ -698,7 +662,7 @@ impl HelloTriangleSample {
     }
 }
 
-impl Drop for HelloTriangleSample {
+impl Drop for HelloTriangleSample<> {
     fn drop(&mut self) {
         self.info_queue
             .print_messages()

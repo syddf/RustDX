@@ -165,6 +165,9 @@ impl Device
     }
 }
 
+unsafe impl Sync for Device {}
+unsafe impl Send for Device {}
+
 impl D3D12DeviceInterface for Device
 {
     fn check_feature_support<T>(
@@ -919,3 +922,5 @@ impl Swapchain {
     }
 }
 
+unsafe impl Sync for Swapchain {}
+unsafe impl Send for Swapchain {}
