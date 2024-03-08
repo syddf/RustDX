@@ -67,6 +67,16 @@ pub trait D3D12DeviceInterface
         desc: &CommandQueueDesc,
     ) -> DxResult<CommandQueue>;
 
+    fn create_staging_buffer(
+        &self, 
+        size: ByteCount
+    ) -> DxResult<Resource>;
+
+    fn create_default_buffer(
+        &self, 
+        size: ByteCount
+    ) -> DxResult<Resource>;
+
     fn create_committed_resource(
         &self,
         heap_props: &HeapProperties,
@@ -397,6 +407,44 @@ impl D3D12DeviceInterface for Device
         }
 
         Ok(Resource { this: hw_resource })
+    }
+
+    fn create_staging_buffer(&self, size: ByteCount) -> DxResult<Resource>
+    {
+        let mut heap_props = HeapProperties::default();
+        heap_props.0.Type = HeapType::Upload as i32;
+
+        let mut resource_desc = ResourceDesc::default();
+        resource_desc.0.Dimension = ResourceDimension::Buffer as i32;
+        resource_desc.0.Width = size.0;
+        resource_desc.0.Layout = TextureLayout::RowMajor as i32;
+
+        self.create_committed_resource(
+            &heap_props,
+            HeapFlags::None,
+            &resource_desc,
+            ResourceStates::GenericRead,
+            None,
+        )
+    }
+
+    fn create_default_buffer(&self, size: ByteCount) -> DxResult<Resource>
+    {
+        let mut heap_props = HeapProperties::default();
+        heap_props.0.Type = HeapType::Default as i32;
+
+        let mut resource_desc = ResourceDesc::default();
+        resource_desc.0.Dimension = ResourceDimension::Buffer as i32;
+        resource_desc.0.Width = size.0;
+        resource_desc.0.Layout = TextureLayout::RowMajor as i32;
+
+        self.create_committed_resource(
+            &heap_props,
+            HeapFlags::None,
+            &resource_desc,
+            ResourceStates::Common,
+            None,
+        )
     }
 
     fn create_heap(&self, heap_desc: HeapDesc) -> DxResult<Heap> {

@@ -27,6 +27,7 @@ impl CommandAllocator {
         Ok(())
     }
 }
+unsafe impl Send for CommandAllocator {}
 
 #[derive(Debug)]
 #[repr(transparent)]
@@ -47,7 +48,25 @@ impl_com_object_set_get_name!(CommandList);
 impl_com_object_refcount_named!(CommandList);
 impl_com_object_clone_drop!(CommandList);
 
+unsafe impl Send for CommandList {}
+
 impl CommandList {
+    pub fn add_resource_barrier(
+        &self,
+        resource: &Resource,
+        from: ResourceStates,
+        to: ResourceStates,
+    ) {
+        let mut resource_barrier = ResourceTransitionBarrier::default();
+        resource_barrier.0.pResource = resource.this;
+        resource_barrier.0.StateBefore = from.bits() as i32; 
+        resource_barrier.0.StateAfter = to.bits() as i32; 
+        let barriers = [ResourceBarrier::new_transition(
+            &resource_barrier
+        )];
+        self.resource_barrier(&barriers);
+    }
+
     pub fn begin_query(
         &self,
         query_heap: &QueryHeap,

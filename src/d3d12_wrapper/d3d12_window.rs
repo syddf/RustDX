@@ -116,6 +116,51 @@ pub fn InitD3D12Device(hwnd: *mut std::ffi::c_void)
 
     let mut g_copy_command_queue = G_COPY_COMMAND_QUEUE.lock().unwrap();
     g_copy_command_queue.this = copy_command_queue.this;
+    
+    let copy_command_allocator = device
+    .create_command_allocator(CommandListType::Copy)
+    .expect("Cannot create command allocator");
+
+    let copy_command_list = device
+    .create_command_list(
+        CommandListType::Copy,
+        &copy_command_allocator,
+        None,
+    )
+    .expect("Cannot create command list");
+
+    copy_command_list.close().expect("Cannot close command list");
+
+    let mut g_copy_command_allocator = G_COPY_COMMAND_ALLOCATOR.lock().unwrap();
+    g_copy_command_allocator.this = copy_command_allocator.this;
+
+    let mut g_copy_command_list = G_COPY_COMMAND_LIST.lock().unwrap();
+    g_copy_command_list.this = copy_command_list.this;
+
+    let direct_command_allocator = device
+    .create_command_allocator(CommandListType::Direct)
+    .expect("Cannot create command allocator");
+
+    let direct_command_list = device
+    .create_command_list(
+        CommandListType::Direct,
+        &direct_command_allocator,
+        None,
+    )
+    .expect("Cannot create command list");
+
+    direct_command_list.close().expect("Cannot close command list");
+
+    let mut g_direct_command_allocator = G_DIRECT_COMMAND_ALLOCATOR.lock().unwrap();
+    g_direct_command_allocator.this = direct_command_allocator.this;
+
+    let mut g_direct_command_list = G_DIRECT_COMMAND_LIST.lock().unwrap();
+    g_direct_command_list.this = direct_command_list.this;
+
+    g_direct_command_allocator.reset().expect("Cannot reset command allocator");
+    g_direct_command_list.reset(&g_direct_command_allocator, None).expect("Cannot reset command list");
+    g_copy_command_allocator.reset().expect("Cannot reset command allocator");
+    g_copy_command_list.reset(&g_copy_command_allocator, None).expect("Cannot reset command list");
 }
 
 lazy_static! 
@@ -123,6 +168,10 @@ lazy_static!
     pub static ref G_D3D12_DEVICE: Mutex<Device> = Mutex::new(Device { this:std::ptr::null_mut() });
     pub static ref G_SWAP_CHAIN: Mutex<Swapchain> = Mutex::new(Swapchain { this:std::ptr::null_mut() });
     pub static ref G_DIRECT_COMMAND_QUEUE: Mutex<CommandQueue> = Mutex::new(CommandQueue { this:std::ptr::null_mut() });
+    pub static ref G_DIRECT_COMMAND_ALLOCATOR: Mutex<CommandAllocator> = Mutex::new(CommandAllocator { this:std::ptr::null_mut() });
+    pub static ref G_DIRECT_COMMAND_LIST: Mutex<CommandList> = Mutex::new(CommandList { this:std::ptr::null_mut() });
     pub static ref G_COPY_COMMAND_QUEUE: Mutex<CommandQueue> = Mutex::new(CommandQueue { this:std::ptr::null_mut() });
+    pub static ref G_COPY_COMMAND_ALLOCATOR: Mutex<CommandAllocator> = Mutex::new(CommandAllocator { this:std::ptr::null_mut() });
+    pub static ref G_COPY_COMMAND_LIST: Mutex<CommandList> = Mutex::new(CommandList { this:std::ptr::null_mut() });
     
 }

@@ -20,6 +20,13 @@ impl_com_object_refcount_named!(Resource);
 impl_com_object_set_get_name!(Resource);
 
 unsafe impl Send for Resource {}
+impl Default for Resource {
+    fn default() -> Self {
+        Resource {
+            this: std::ptr::null_mut()
+        }
+    }
+}
 
 impl Resource {
     pub fn get_desc(&self) -> ResourceDesc {

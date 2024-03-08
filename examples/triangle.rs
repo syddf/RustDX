@@ -233,6 +233,7 @@ impl HelloTriangleSample<> {
         triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![0., 1., 0., 1.]);
         triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![1., 0., 1., 1.]);
         triangle.set_index_buffer(vec![0, 1, 2]);
+        triangle.generate_gpu_resource(&device);
 
         let vertex_data = vec![
             Vertex {
