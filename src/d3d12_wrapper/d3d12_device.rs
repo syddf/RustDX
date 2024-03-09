@@ -155,8 +155,6 @@ pub trait D3D12DeviceInterface
 pub struct Device {
     pub this: *mut ID3D12Device2,
 }
-impl_com_object_refcount_unnamed!(Device);
-impl_com_object_clone_drop!(Device);
 
 impl Device
 {
@@ -659,8 +657,6 @@ impl D3D12DeviceInterface for Device
 pub struct Factory {
     pub this: *mut IDXGIFactory6,
 }
-impl_com_object_refcount_unnamed!(Factory);
-impl_com_object_clone_drop!(Factory);
 
 impl Factory {
     pub fn new(flags: CreateFactoryFlags) -> DxResult<Self> {
@@ -818,8 +814,6 @@ impl Factory {
 pub struct Adapter {
     pub this: *mut IDXGIAdapter3,
 }
-impl_com_object_refcount_unnamed!(Adapter);
-impl_com_object_clone_drop!(Adapter);
 
 impl Adapter {
     pub fn get_desc(&self) -> DxResult<AdapterDesc> {
@@ -929,8 +923,6 @@ impl Default for SwapChainDesc {
 pub struct Swapchain {
     pub this: *mut IDXGISwapChain4,
 }
-impl_com_object_refcount_unnamed!(Swapchain);
-impl_com_object_clone_drop!(Swapchain);
 
 impl Swapchain {
     pub fn get_buffer(&self, index: u32) -> DxResult<Resource> {

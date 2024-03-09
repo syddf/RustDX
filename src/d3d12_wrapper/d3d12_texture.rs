@@ -107,7 +107,6 @@ impl TextureCopyLocation {
         let resource = Resource {
             this: self.0.pResource,
         };
-        resource.add_ref();
         resource
     }
 

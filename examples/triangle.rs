@@ -5,6 +5,7 @@
 use log::{debug, error, trace, warn};
 use memoffset::offset_of;
 
+use RustDX::static_mesh::StaticMesh;
 use RustDX::*;
 use crate::d3d12_common::*;
 use crate::d3d12_enum::*;
@@ -65,13 +66,13 @@ impl Vertex {
         position_element_desc.0.SemanticName = CString::new("Position").unwrap().into_raw() as *const i8;
         position_element_desc.0.Format = Format::R32G32B32Float as i32;
         position_element_desc.0.InputSlot = 0;
-        position_element_desc.0.AlignedByteOffset = ByteCount(offset_of!(Self, position) as u64).0 as u32;
+        position_element_desc.0.AlignedByteOffset = 0 as u32;
 
         let mut color_element_desc = InputElementDesc::default();
         color_element_desc.0.SemanticName = CString::new("Color").unwrap().into_raw() as *const i8;
         color_element_desc.0.Format = Format::R32G32B32A32Float as i32;
         color_element_desc.0.InputSlot = 0;
-        color_element_desc.0.AlignedByteOffset = ByteCount(offset_of!(Self, color) as u64).0 as u32;
+        color_element_desc.0.AlignedByteOffset = 44 as u32;
 
         vec![
             position_element_desc,
@@ -80,80 +81,10 @@ impl Vertex {
     }
 }
 
-trait TypedBuffer {
-    type ElementType;
-    fn from_resource(
-        resource: Resource,
-        element_count: u32,
-        element_size: ByteCount,
-    ) -> Self;
-}
-
-struct VertexBuffer {
-    buffer: Resource,
-    view: VertexBufferView,
-    size: ByteCount,
-}
-
-impl TypedBuffer for VertexBuffer {
-    type ElementType = Vertex;
-
-    // note it consumes the resource; should it be revisited?
-    fn from_resource(
-        buffer: Resource,
-        element_count: u32,
-        element_size: ByteCount,
-    ) -> Self {
-        let size = element_size * element_count;
-        let mut view = VertexBufferView::default();
-        view.0.BufferLocation = buffer.get_gpu_virtual_address().0;
-        view.0.SizeInBytes = size.0 as u32;
-        view.0.StrideInBytes = element_size.0 as u32;
-
-        VertexBuffer {
-            buffer: buffer,
-            view: view,
-            size: size,
-        }
-    }
-}
-
-struct IndexBuffer {
-    buffer: Resource,
-    view: IndexBufferView,
-    size: ByteCount,
-}
-
-impl TypedBuffer for IndexBuffer {
-    type ElementType = u16;
-
-    fn from_resource(
-        buffer: Resource,
-        element_count: u32,
-        element_size: ByteCount,
-    ) -> Self {
-        let size = element_size * element_count;
-        let mut view = IndexBufferView::default();
-        view.0.BufferLocation = buffer.get_gpu_virtual_address().0;
-        view.0.SizeInBytes = size.0 as u32;
-        view.0.Format = match element_size {
-            ByteCount(2) => Format::R16Uint as i32,
-            ByteCount(4) => Format::R32Uint as i32,
-            _ => panic!("wrong index type")};
-
-        IndexBuffer {
-            buffer: buffer,
-            view: view,
-            size: size,
-        }
-    }
-}
-
 struct HelloTriangleSample<> {
     root_signature: Option<RootSignature>,
     pipeline_state: Option<PipelineState>,
-    index_buffers: Vec<IndexBuffer>,
-    vertex_buffers: Vec<VertexBuffer>,
+    static_meshes: Vec<StaticMesh>,
     current_frame: u64,
     current_fence_value: u64,
     rtv_descriptor_size: ByteCount,
@@ -208,11 +139,21 @@ impl HelloTriangleSample<> {
             )
             .expect("Cannot create RTV heap");
 
+        let mut triangle = static_mesh::StaticMesh::new("triangle");
+        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![-1., -1., 0.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![0., 1., 0.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![1., -1., 0.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![1., 0., 0., 1.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![0., 1., 0., 1.]);
+        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![1., 0., 1., 1.]);
+        triangle.set_index_buffer(vec![0, 1, 2]);
+        triangle.generate_gpu_resource(&device);
+    
+        let meshes = vec![triangle];
         let mut renderer = HelloTriangleSample {
             root_signature: None,
             pipeline_state: None,
-            index_buffers: vec![],
-            vertex_buffers: vec![],
+            static_meshes: meshes,
             current_frame: 0,
             current_fence_value: 0,
             info_queue: info_queue,
@@ -224,43 +165,6 @@ impl HelloTriangleSample<> {
         };
 
         renderer.create_render_target_views(&device);
-
-        let mut triangle = static_mesh::StaticMesh::new("triangle");
-        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![-1., -1., 0.]);
-        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![0., 1., 0.]);
-        triangle.add_channel_data(mesh::MeshDataChannel::Position, vec![1., -1., 0.]);
-        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![1., 0., 0., 1.]);
-        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![0., 1., 0., 1.]);
-        triangle.add_channel_data(mesh::MeshDataChannel::Color, vec![1., 0., 1., 1.]);
-        triangle.set_index_buffer(vec![0, 1, 2]);
-        triangle.generate_gpu_resource(&device);
-
-        let vertex_data = vec![
-            Vertex {
-                position: [-1., -1., 0.],
-                color: [1., 0., 0., 1.],
-            },
-            Vertex {
-                position: [0., 1., 0.],
-                color: [0., 1., 0., 1.],
-            },
-            Vertex {
-                position: [1., -1., 0.],
-                color: [1., 0., 1., 1.],
-            },
-        ];
-
-        let vertex_buffer = renderer
-            .create_default_buffer(&vertex_data, Some("vertex_buffer"), &device)
-            .expect("Cannot create vertex buffer");
-
-        renderer.vertex_buffers.push(vertex_buffer);
-
-        let index_data: Vec<u16> = vec![0, 1, 2];
-        let index_buffer = renderer
-            .create_default_buffer(&index_data, Some("index_buffer"), &device)
-            .expect("Cannot create index buffer");
-        renderer.index_buffers.push(index_buffer);
 
         let raw_vertex_shader_bytecode = HelloTriangleSample::compile_shader(
             "VertexShader",
@@ -411,11 +315,12 @@ float4 PS(VertexOut input) : SV_Target
         self.command_list
             .set_render_targets(&mut [rtv_handle], false, None);
 
+        let (_,_,vertex_view, index_view) = self.static_meshes[0].get_gpu_resource();
         self.command_list
-            .set_vertex_buffers(0, &[self.vertex_buffers[0].view]);
+            .set_vertex_buffers(0, &[vertex_view.clone()]);
 
         self.command_list
-            .set_index_buffer(&self.index_buffers[0].view);
+            .set_index_buffer(&index_view.clone());
         self.command_list
             .set_primitive_topology(PrimitiveTopology::TriangleList);
         self.command_list.draw_indexed_instanced(3, 1, 0, 0, 0);
@@ -520,102 +425,6 @@ impl HelloTriangleSample<> {
             &resource_barrier
         )
             ]);
-    }
-
-    fn create_default_buffer<T: TypedBuffer>(
-        &mut self,
-        init_data: &Vec<T::ElementType>,
-        debug_name: Option<&str>,
-        device:&Device
-    ) -> Result<T, HRESULT> {
-        let _debug_printer =
-            ScopedDebugMessagePrinter::new(Rc::clone(&self.info_queue));
-
-        self.command_list
-            .reset(&self.command_allocator, None)
-            .expect("Cannot reset command lsit");
-
-        let size = ByteCount::from(
-            init_data.len() * std::mem::size_of::<T::ElementType>(),
-        );
-        let staging_buffer = self
-            .create_buffer(
-                &device,
-                size,
-                HeapType::Upload,
-                ResourceStates::GenericRead,
-            )
-            .expect("Cannot create staging buffer");
-
-        if let Some(debug_name) = debug_name {
-            staging_buffer
-                .set_name(&format!("staging_{}", debug_name))
-                .expect("Cannot set name on staging buffer");
-        }
-
-        let data = staging_buffer
-            .map(0, None)
-            .expect("Cannot map staging buffer");
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(
-                init_data.as_ptr() as *const u8,
-                data,
-                size.0 as usize,
-            );
-        }
-        staging_buffer.unmap(0, None);
-
-        let default_buffer = self
-            .create_buffer(
-                &device,
-                size,
-                HeapType::Default,
-                ResourceStates::Common,
-            )
-            .expect("Cannot create default buffer");
-
-        if let Some(debug_name) = debug_name {
-            default_buffer
-                .set_name(&format!("default_{}", debug_name))
-                .expect("Cannot set name on default buffer");
-        }
-
-        HelloTriangleSample::add_transition(
-            &self.command_list,
-            &default_buffer,
-            ResourceStates::Common,
-            ResourceStates::CopyDest,
-        );
-
-        self.command_list.copy_buffer_region(
-            &default_buffer,
-            ByteCount(0),
-            &staging_buffer,
-            ByteCount(0),
-            size,
-        );
-
-        HelloTriangleSample::add_transition(
-            &self.command_list,
-            &default_buffer,
-            ResourceStates::CopyDest,
-            ResourceStates::GenericRead,
-        );
-
-        self.command_list
-            .close()
-            .expect("Cannot close command list");
-        let command_queue = G_DIRECT_COMMAND_QUEUE.lock().unwrap();
-        command_queue
-            .execute_command_lists(std::slice::from_ref(&self.command_list));
-        self.flush_command_queue(&command_queue);
-
-        Ok(T::from_resource(
-            default_buffer,
-            init_data.len() as u32,
-            ByteCount::from(std::mem::size_of::<T::ElementType>()),
-        ))
     }
 
     fn flush_command_queue(&mut self, command_queue: &CommandQueue) {

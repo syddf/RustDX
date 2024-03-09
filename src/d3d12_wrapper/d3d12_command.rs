@@ -18,9 +18,6 @@ pub struct CommandAllocator {
     pub this: *mut ID3D12CommandAllocator,
 }
 impl_com_object_set_get_name!(CommandAllocator);
-impl_com_object_refcount_named!(CommandAllocator);
-impl_com_object_clone_drop!(CommandAllocator);
-
 impl CommandAllocator {
     pub fn reset(&self) -> DxResult<()> {
         unsafe { dx_try!(self.this, Reset,) };
@@ -35,8 +32,6 @@ pub struct QueryHeap {
     pub this: *mut ID3D12QueryHeap,
 }
 impl_com_object_set_get_name!(QueryHeap);
-impl_com_object_refcount_named!(QueryHeap);
-impl_com_object_clone_drop!(QueryHeap);
 
 
 #[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -45,8 +40,6 @@ pub struct CommandList {
     pub this: *mut ID3D12GraphicsCommandList6,
 }
 impl_com_object_set_get_name!(CommandList);
-impl_com_object_refcount_named!(CommandList);
-impl_com_object_clone_drop!(CommandList);
 
 unsafe impl Send for CommandList {}
 
@@ -749,9 +742,6 @@ pub struct CommandQueueDesc(pub D3D12_COMMAND_QUEUE_DESC);
 pub struct CommandQueue {
     pub this: *mut ID3D12CommandQueue,
 }
-impl_com_object_refcount_unnamed!(CommandQueue);
-impl_com_object_clone_drop!(CommandQueue);
-
 unsafe impl Send for CommandQueue {}
 
 impl CommandQueue {

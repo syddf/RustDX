@@ -15,8 +15,7 @@ use crate::d3d12_texture::*;
 pub struct Resource {
     pub this: *mut ID3D12Resource,
 }
-impl_com_object_clone_drop!(Resource);
-impl_com_object_refcount_named!(Resource);
+
 impl_com_object_set_get_name!(Resource);
 
 unsafe impl Send for Resource {}
@@ -69,7 +68,6 @@ impl Resource {
             num_subresources,
             ByteCount(0),
         );
-        device.release();
 
         Ok(total_size)
     }
@@ -221,9 +219,6 @@ pub struct DescriptorHeap {
 }
 
 impl_com_object_set_get_name!(DescriptorHeap);
-impl_com_object_refcount_unnamed!(DescriptorHeap);
-impl_com_object_clone_drop!(DescriptorHeap);
-
 unsafe impl Send for DescriptorHeap {}
 
 impl DescriptorHeap {
@@ -318,9 +313,6 @@ pub struct Heap {
     pub this: *mut ID3D12Heap,
 }
 impl_com_object_set_get_name!(Heap);
-impl_com_object_refcount_named!(Heap);
-impl_com_object_clone_drop!(Heap);
-
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug, Copy, Clone)]
 #[repr(transparent)]
 pub struct ResourceAllocationInfo(pub D3D12_RESOURCE_ALLOCATION_INFO);

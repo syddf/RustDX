@@ -54,7 +54,7 @@ impl StaticMesh
 
     pub fn generate_gpu_resource(&mut self, g_device: &Device)
     {
-        let copy_comand_list = G_DIRECT_COMMAND_LIST.lock().unwrap();
+        let copy_comand_list = G_COPY_COMMAND_LIST.lock().unwrap();
         let (vertex_data, vertex_size) = self.mesh.get_vertex_buffer_data();
         
         let vertex_buffer_size = ByteCount::from(
@@ -85,7 +85,7 @@ impl StaticMesh
             ByteCount(0),
             vertex_buffer_size,
         );
-        copy_comand_list.add_resource_barrier(&vertex_default_buffer, ResourceStates::CopyDest, ResourceStates::GenericRead);
+        copy_comand_list.add_resource_barrier(&vertex_default_buffer, ResourceStates::CopyDest, ResourceStates::Common);
 
         self.vertex_buffer_view = VertexBufferView::default();
         self.vertex_buffer_view.0.BufferLocation = vertex_default_buffer.get_gpu_virtual_address().0;
@@ -143,7 +143,7 @@ impl StaticMesh
             ByteCount(0),
             index_buffer_size,
         );
-        copy_comand_list.add_resource_barrier(&index_default_buffer, ResourceStates::CopyDest, ResourceStates::GenericRead);
+        copy_comand_list.add_resource_barrier(&index_default_buffer, ResourceStates::CopyDest, ResourceStates::Common);
 
         self.index_buffer_view = IndexBufferView::default();
         self.index_buffer_view.0.BufferLocation = index_default_buffer.get_gpu_virtual_address().0;
@@ -157,10 +157,15 @@ impl StaticMesh
 
 
         copy_comand_list.close().expect("Cannot close command list");
-        let command_queue = G_DIRECT_COMMAND_QUEUE.lock().unwrap();
+        let command_queue = G_COPY_COMMAND_QUEUE.lock().unwrap();
         command_queue
             .execute_command_lists(std::slice::from_ref(&copy_comand_list));
 
+    }
+
+    pub fn get_gpu_resource(&self) -> (&Resource, &Resource, &VertexBufferView, &IndexBufferView)
+    {
+        (&self.vertex_buffer_resource, &self.index_buffer_resource, &self.vertex_buffer_view, &self.index_buffer_view)
     }
 }
 

@@ -10,9 +10,6 @@ use log::warn;
 pub struct Debug {
     pub this: *mut ID3D12Debug5,
 }
-impl_com_object_refcount_unnamed!(Debug);
-impl_com_object_clone_drop!(Debug);
-
 impl Debug {
     pub fn new() -> DxResult<Self> {
         let mut debug_interface: *mut ID3D12Debug5 = std::ptr::null_mut();
@@ -55,8 +52,6 @@ pub struct InfoQueue {
     pub this: *mut ID3D12InfoQueue,
 }
 
-impl_com_object_refcount_unnamed!(InfoQueue);
-impl_com_object_clone_drop!(InfoQueue);
 
 impl InfoQueue {
     pub fn new(

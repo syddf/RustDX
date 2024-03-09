@@ -93,8 +93,6 @@ pub struct Fence {
 }
 
 impl_com_object_set_get_name!(Fence);
-impl_com_object_refcount_named!(Fence);
-impl_com_object_clone_drop!(Fence);
 
 // ToDo: make sure ID3D12Fence is thread-safe
 unsafe impl Send for Fence {}

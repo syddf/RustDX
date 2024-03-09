@@ -68,8 +68,6 @@ pub struct RootSignature {
 }
 
 impl_com_object_set_get_name!(RootSignature);
-impl_com_object_refcount_named!(RootSignature);
-impl_com_object_clone_drop!(RootSignature);
 
 unsafe impl Send for RootSignature {}
 
@@ -405,9 +403,6 @@ pub struct PipelineState {
     pub this: *mut ID3D12PipelineState,
 }
 impl_com_object_set_get_name!(PipelineState);
-impl_com_object_refcount_named!(PipelineState);
-impl_com_object_clone_drop!(PipelineState);
-
 unsafe impl Send for PipelineState {}
 
 

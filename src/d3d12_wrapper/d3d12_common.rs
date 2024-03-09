@@ -118,117 +118,6 @@ macro_rules! fail {
     };
 }
 
-macro_rules! impl_com_object_clone_drop{
-    ($struct_type:ty
-        $(, $extra_member:ident)*
-    ) => {
-        impl Clone for $struct_type {
-            fn clone(&self) -> Self {
-                self.add_ref();
-                Self {
-                    this: self.this,
-                    $(
-                        $extra_member: self.$extra_member,
-                    )*
-                }
-            }
-        }
-
-        impl Drop for $struct_type {
-            fn drop(&mut self) {
-                self.release();
-            }
-        }
-    };
-}
-
-macro_rules! impl_com_object_refcount_unnamed {
-    ($struct_type:ty
-        $(, $extra_member:ident)*
-    ) => {
-        impl $struct_type {
-            pub fn add_ref(&self) -> u64 {
-                unsafe {
-                    let live_ref_count: ULONG = dx_call!(self.this, AddRef,);
-
-                    #[cfg(feature = "log_ref_counting")]
-                    trace!(
-                        "Increased refcount for {}, live reference count: {}",
-                        stringify!($struct_type),
-                        live_ref_count
-                    );
-
-                    live_ref_count as u64
-                }
-            }
-
-            pub fn release(&self) -> u64 {
-                unsafe {
-                    let live_ref_count: ULONG = dx_call!(self.this, Release,);
-
-                    #[cfg(feature = "log_ref_counting")]
-                    trace!(
-                        "Released {}, live reference count: {}",
-                        stringify!($struct_type),
-                        live_ref_count
-                    );
-
-                    live_ref_count as u64
-                }
-            }
-        }
-    };
-}
-
-macro_rules! impl_com_object_refcount_named {
-    ($struct_type:ty
-        $(, $extra_member:ident)*
-        ) => {
-        impl $struct_type {
-            pub fn add_ref(&self) -> u64 {
-                unsafe {
-                    let live_ref_count: ULONG = dx_call!(self.this, AddRef,);
-                    #[cfg(feature = "log_ref_counting")]
-                    {
-                        let name =   self.get_name();
-                        trace!(
-                                "Increased refcount for {} '{}', live reference count: {}",
-                                stringify!($struct_type),
-                                match name.as_ref() {
-                                    Ok(name) => name,
-                                    Err(_) => "unnamed object"
-                                },
-                            live_ref_count
-                        )
-                    }
-                    live_ref_count as u64
-                }
-            }
-
-            pub fn release(&self) -> u64 {
-                unsafe {
-                    #[cfg(feature = "log_ref_counting")]
-                    let name = self.get_name();
-                    let live_ref_count: ULONG = dx_call!(self.this, Release,);
-                    #[cfg(feature = "log_ref_counting")]
-                    {
-                        trace!(
-                            "Released {} '{}', live reference count: {}",
-                            stringify!($struct_type),
-                            match name.as_ref() {
-                                Ok(name) => name,
-                                Err(_) => "unnamed object",
-                            },
-                            live_ref_count
-                        );
-                    }
-                    live_ref_count as u64
-                }
-            }
-        }
-    }
-}
-
 macro_rules! impl_com_object_set_get_name {
     ($struct_type:ty
         $(, $extra_member:ident)*
@@ -386,8 +275,6 @@ impl_from!(ByteCount, isize);
 pub struct Blob {
     pub this: *mut ID3DBlob,
 }
-impl_com_object_refcount_unnamed!(Blob);
-impl_com_object_clone_drop!(Blob);
 
 impl Blob {
     pub fn get_buffer(&self) -> &[u8] {
