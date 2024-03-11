@@ -31,6 +31,8 @@ const SHADER_OUT_ROOT_DIR : &str = r"assets\shaders\out\";
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 
+use crate::d3d12_pso::InputElementDesc;
+
 pub fn compile_shader(
     name : &str,
     source:&str,
@@ -232,6 +234,18 @@ impl ShaderManager
     {
         let new_vertex_factory = VertexFactoryInfo{name: name, macros: macros};
         self.vertex_factory_infos.push(new_vertex_factory);
+    }
+
+    pub fn get_vf_macros(&self, vf_name: &str) -> Option<&Vec<&'static str>>
+    {
+        for i in 0..self.vertex_factory_infos.len()
+        {
+            if self.vertex_factory_infos[i].name == vf_name
+            {
+                return Some(&self.vertex_factory_infos[i].macros)
+            }
+        }
+        None
     }
 
     fn load_shader_out(&mut self, entry: &DirEntry)

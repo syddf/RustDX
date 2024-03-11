@@ -85,7 +85,7 @@ impl StaticMesh
             ByteCount(0),
             vertex_buffer_size,
         );
-        copy_comand_list.add_resource_barrier(&vertex_default_buffer, ResourceStates::CopyDest, ResourceStates::Common);
+        //copy_comand_list.add_resource_barrier(&vertex_default_buffer, ResourceStates::CopyDest, ResourceStates::Common);
 
         self.vertex_buffer_view = VertexBufferView::default();
         self.vertex_buffer_view.0.BufferLocation = vertex_default_buffer.get_gpu_virtual_address().0;
@@ -143,7 +143,7 @@ impl StaticMesh
             ByteCount(0),
             index_buffer_size,
         );
-        copy_comand_list.add_resource_barrier(&index_default_buffer, ResourceStates::CopyDest, ResourceStates::Common);
+       // copy_comand_list.add_resource_barrier(&index_default_buffer, ResourceStates::CopyDest, ResourceStates::Common);
 
         self.index_buffer_view = IndexBufferView::default();
         self.index_buffer_view.0.BufferLocation = index_default_buffer.get_gpu_virtual_address().0;

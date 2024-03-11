@@ -97,3 +97,18 @@ impl Mesh
         data
     }
 }
+
+pub fn get_vertex_attribute_offset(channel: u32) -> u32
+{
+    let mut res = 0;
+    if channel == 0
+    {
+        return 0;
+    }
+    for i in 0..(channel - 1) as usize 
+    {
+        let len = GLOBAL_DEFAULT_MESHDATA_VALUE.get(&i).unwrap().len();
+        res +=  len as u32 * 4;
+    }
+    res
+}

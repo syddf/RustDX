@@ -338,6 +338,7 @@ impl<'a> Default for InputElementDesc<'a> {
     )
     }
 }
+unsafe impl<'a> Send for InputElementDesc<'a>{}
 
 // We need this because we transfer ownership of the CString "name" into
 // the raw C string (const char*) "SemanticName". Since this memory has to be

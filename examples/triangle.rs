@@ -6,6 +6,7 @@ use log::{debug, error, trace, warn};
 use memoffset::offset_of;
 
 use RustDX::static_mesh::StaticMesh;
+use RustDX::vertex_factory::get_vertex_input_layout;
 use RustDX::*;
 use crate::d3d12_common::*;
 use crate::d3d12_enum::*;
@@ -226,7 +227,7 @@ float4 PS(VertexOut input) : SV_Target
 
         renderer.root_signature = Some(root_signature);
 
-        let vertex_desc = Vertex::make_desc();
+        let vertex_desc = get_vertex_input_layout("CommonVertexFactory_");
         let mut input_layout = InputLayoutDesc::default();
         input_layout.0.pInputElementDescs = vertex_desc.as_ptr() as *const D3D12_INPUT_ELEMENT_DESC;
         input_layout.0.NumElements = vertex_desc.len() as u32;
@@ -483,8 +484,11 @@ impl Drop for HelloTriangleSample<> {
 
 fn main() {
     vertex_factory::VertexFactoryInitializer::Init();
-    let shader_manager = G_SHADER_MANAGER.lock().unwrap();
-    shader_manager.update_all_shader();
+    {
+        let shader_manager = G_SHADER_MANAGER.lock().unwrap();
+        shader_manager.update_all_shader();
+    }
+        
     let command_args = clap::App::new("Hobbiton")
         .arg(
             clap::Arg::with_name("frame_count")
