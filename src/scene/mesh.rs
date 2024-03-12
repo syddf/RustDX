@@ -31,8 +31,6 @@ pub struct Mesh
 {
     pub mesh_channel_data : MeshChannelData,
     pub mesh_index_data : Vec<u32>
-
-
 }
 
 impl Mesh

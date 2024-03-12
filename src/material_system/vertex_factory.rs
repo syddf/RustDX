@@ -19,6 +19,17 @@ macro_rules! impl_vertex_factory {
     }}
 }
 
+macro_rules! add_vertex_factory {
+    ($name:expr, $($macro_name:expr),+) => {
+        fn add_to_shader_manager()
+        {
+            let macros = vec![$($macro_name),+];
+            let mut shader_manager = G_SHADER_MANAGER.lock().unwrap();
+            shader_manager.add_vertex_factory(concat!($name, "_"), macros);
+        }
+    };
+}
+
 pub trait VertexFactory
 {
     fn add_to_shader_manager();
@@ -39,12 +50,7 @@ impl CommonVertexFactory
 
 impl VertexFactory for CommonVertexFactory
 {
-    fn add_to_shader_manager()
-    {
-        let macros = vec!["VERTEX_FACTORY_USE_POSITION", "VERTEX_FACTORY_USE_COLOR"];
-        let mut shader_manager = G_SHADER_MANAGER.lock().unwrap();
-        shader_manager.add_vertex_factory("CommonVertexFactory_", macros);        
-    }
+    add_vertex_factory!("CommonVertexFactory", "VERTEX_FACTORY_USE_POSITION", "VERTEX_FACTORY_USE_COLOR");
 }
 
 pub fn get_vertex_input_layout<'a>(vf_name: &str) -> Vec<InputElementDesc<'a>>

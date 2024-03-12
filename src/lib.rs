@@ -11,3 +11,6 @@ pub use d3d12_wrapper::*;
 
 mod scene;
 pub use scene::*;
+
+mod rendering_pipeline;
+pub use rendering_pipeline::*;

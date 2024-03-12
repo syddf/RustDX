@@ -173,6 +173,6 @@ impl SceneProxy for StaticMesh
 {
     fn generate_mesh_batch<'a>(&'a self) -> MeshBatch<'a>
     {
-        MeshBatch{mesh: &self.mesh}
+        MeshBatch{mesh: &self.mesh, mesh_index_in_gpu_scene: 0} // fix
     }
 }
